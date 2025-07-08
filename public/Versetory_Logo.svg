@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 963.55 951.99">
+  <style>
+    .fill-black { fill: #000000; }
+    .evenodd { fill-rule: evenodd; }
+  </style>
+  <g id="레이어_2">
+    <polygon class="fill-black" points="483 951.99 483 878.99 841.19 331.21 886.19 331.21 483 951.99"/>
+    <polygon class="fill-black" points="767.78 449.31 811.13 444.88 736.81 331.21 691.81 331.21 767.78 449.31"/>
+    <polygon class="fill-black evenodd" points="910.5 587.99 897.61 587.99 762.5 587.99 739.5 624.99 947.5 624.99 947.5 587.99 910.5 587.99"/>
+    <path class="fill-black evenodd" d="M399.98,74h92.41v37h-92.41v-37Z"/>
+    <path class="fill-black evenodd" d="M399.98,165.61h92.41v37h-92.41v-37Z"/>
+    <polygon class="fill-black" points="520.73 294 566.85 293.89 492.54 180.22 447.54 180.22 520.73 294"/>
+    <path class="fill-black evenodd" d="M492.41,74v36.95c15.11,0,27.35,12.25,27.35,27.35s-12.25,27.35-27.35,27.35v36.95c35.51,0,64.3-28.79,64.3-64.3s-28.79-64.3-64.3-64.3Z"/>
+    <path class="fill-black evenodd" d="M524.32,331.12h92.41v37h-92.41v-37Z"/>
+    <path class="fill-black evenodd" d="M524.32,422.73h92.41v37h-92.41v-37Z"/>
+    <polygon class="fill-black" points="645.07 551.12 691.2 551.01 616.89 437.35 571.89 437.35 645.07 551.12"/>
+    <path class="fill-black evenodd" d="M616.75,331.12v36.95c15.11,0,27.35,12.25,27.35,27.35s-12.25,27.35-27.35,27.35v36.95c35.51,0,64.3-28.79,64.3-64.3s-28.79-64.3-64.3-64.3Z"/>
+    <path class="fill-black evenodd" d="M666.05,165.61v36.95c15.11,0,27.35,12.25,27.35,27.35s-12.25,27.35-27.35,27.35v36.95c35.51,0,64.3-28.79,64.3-64.3s-28.79-64.3-64.3-64.3Z"/>
+    <path class="fill-black evenodd" d="M661.9,74v36.95c-15.11,0-27.35,12.25-27.35,27.35s12.25,27.35,27.35,27.35v36.95c-35.51,0-64.3-28.79-64.3-64.3s28.79-64.3,64.3-64.3Z"/>
+  </g>
+  <g id="레이어_1">
+    <path class="fill-black evenodd" d="M748.19,165.61h138v37h-138v-37Z"/>
+    <path class="fill-black evenodd" d="M748.19,257.21h138v37h-138v-37Z"/>
+    <path class="fill-black evenodd" d="M399.92,331.21c-60.7,0-109.91,49.21-109.91,109.91s49.21,109.91,109.91,109.91,109.91-49.21,109.91-109.91-49.21-109.91-109.91-109.91ZM399.92,515.39c-41.01,0-74.26-33.25-74.26-74.26s33.25-74.26,74.26-74.26,74.26,33.25,74.26,74.26-33.25,74.26-74.26,74.26Z"/>
+    <polygon class="fill-black" points="0 7.99 0 10.73 0 624.99 483 624.99 483 802.99 520 748.99 520 587.99 37.04 587.99 37.04 7.99 0 7.99"/>
+    <circle class="fill-black" cx="399.92" cy="441.1" r="37"/>
+    <path class="fill-black evenodd" d="M261.92,257.21h138v37h-138v-37Z"/>
+    <polygon class="fill-black" points="958.9 0 960.19 37 148 37 148 0 958.9 0"/>
+    <polygon class="fill-black" points="960.19 623.8 923.19 624.77 923.19 7.99 960.19 7.99 960.19 623.8"/>
+    <polygon class="fill-black" points="960.19 624.99 960.19 621.56 923.19 621.56 923.19 624.77 960.19 624.99"/>
+    <polygon class="fill-black" points="37 89.64 0 89.78 0 0 37 0 37 89.64"/>
+    <polygon class="fill-black" points="958.44 0 959.31 37 960.19 37 958.44 0"/>
+    <polygon class="fill-black" points="960.19 0 957.48 0 958.44 37 960.19 37 960.19 0"/>
+    <polygon class="fill-black" points="111.07 291.43 111.07 .75 74.07 .75 74.07 294.21 111.07 294.21 111.07 293.75 111.07 291.43"/>
+    <polygon class="fill-black" points="233 548.92 233 332.76 196 332.76 196 550.99 233 550.99 233 550.65 233 548.92"/>
+    <polygon class="fill-black" points="111.07 420.36 111.07 331.21 74.07 331.21 74.07 421.21 111.07 421.21 111.07 421.07 111.07 420.36"/>
+    <polygon class="fill-black" points="297.26 330.99 130 330.99 130 367.99 298.87 367.99 298.87 330.99 298.6 330.99 297.26 330.99"/>
+    <polygon class="fill-black" points="884.06 74 661.9 74 661.9 111 886.19 111 886.19 74 885.83 74 884.06 74"/>
+    <path class="fill-black evenodd" d="M261.92,165.61h138v37h-138v-37Z"/>
+    <path class="fill-black evenodd" d="M228.95,74h170.98v37h-170.98v-37Z"/>
+    <path class="fill-black evenodd" d="M661.9,165.61h4.15v37h-4.15v-37Z"/>
+    <path class="fill-black evenodd" d="M530.27,257.21h138v37h-138v-37Z"/>
+    <polygon class="fill-black" points="111.07 294.21 254.09 74 209.09 74 74.07 280.49 74.07 294.21 111.07 294.21"/>
+  </g>
+</svg>
