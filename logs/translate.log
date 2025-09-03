@@ -1,0 +1,5 @@
+[2025-09-02_14:29:53_2025-09-02T05:29:53.907Z] model=gpt-4o-mini, input=1523, output=1804, total=3327, cost=$0.001311 , 10359264 , Not Like Us
+[2025-09-02_14:30:52_2025-09-02T05:30:52.328Z] model=gpt-4o-mini, input=2349, output=2260, total=4609, cost=$0.001708 , 235729 , Rap God
+[2025-09-02_16:05:39_2025-09-02T07:05:39.089Z] model=gpt-4o-mini, input=2335, output=2845, total=5180, cost=$0.002057 , 235729 , Rap God
+[2025-09-02_16:06:31_2025-09-02T07:06:31.631Z] model=gpt-4o-mini, input=1531, output=1726, total=3257, cost=$0.001265 , 10359264 , Not Like Us
+[2025-09-02_16:08:36_2025-09-02T07:08:36.118Z] model=gpt-4o-mini, input=2335, output=2798, total=5133, cost=$0.002029 , 235729 , Rap God
