@@ -20,6 +20,7 @@ export default function ExplanationPage() {
   useEffect(() => {
     if (!id) return;
 
+    // 초기화
     setTranslation("");
     setAboutKo("");
     setLoading(false);
@@ -32,43 +33,59 @@ export default function ExplanationPage() {
         setLyrics(data.lyrics || "");
         setAbout(data.about || "");
       })
-      .catch((e) => console.error("곡 정보 불러오기 실패:", e));
+      .catch((err) => console.error("곡 데이터 가져오기 실패:", err));
   }, [id]);
 
   // 번역 요청
   const handleTranslate = async () => {
     if (!lyrics && !about) return;
+
     const songId = id;
     const songTitle = song?.title || "";
 
+    // 가사 번역
     if (lyrics) {
       setLoading(true);
       try {
         const res = await fetch("/api/interpret", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lyrics, about, mode: "translate", songId, songTitle }),
+          body: JSON.stringify({
+            lyrics,
+            about,
+            mode: "translate",
+            songId,
+            songTitle,
+          }),
         });
         const data = await res.json();
         setTranslation(data.result || "");
-      } catch {
+      } catch (e) {
+        console.error(e);
         setTranslation("⚠️ 번역 중 오류가 발생했습니다.");
       } finally {
         setLoading(false);
       }
     }
 
+    // About 번역
     if (about) {
       setAboutLoading(true);
       try {
         const res2 = await fetch("/api/interpret", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ about, mode: "about", songId, songTitle }),
+          body: JSON.stringify({
+            about,
+            mode: "about",
+            songId,
+            songTitle,
+          }),
         });
         const data2 = await res2.json();
         setAboutKo(data2.result || "");
-      } catch {
+      } catch (e) {
+        console.error(e);
         setAboutKo("⚠️ About 번역 중 오류가 발생했습니다.");
       } finally {
         setAboutLoading(false);
@@ -79,6 +96,7 @@ export default function ExplanationPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col">
       <Header />
+
       <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
         {!song ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -87,16 +105,17 @@ export default function ExplanationPage() {
           </div>
         ) : (
           <>
-            {/* 상단: 앨범 커버 + 정보 */}
+            {/* 상단 곡 정보 */}
             <div className="flex flex-col md:flex-row items-start gap-12 mb-12">
               <div className="flex flex-col items-center">
                 <img
-                  src={song.album_cover || "/icons/default_album.png"}
+                  src={song.album_cover}
                   alt={`${song.title} album cover`}
                   className="w-64 h-64 rounded-lg shadow object-cover"
                 />
                 <span className="mt-2 text-sm text-gray-500">Album Cover</span>
               </div>
+
               <div className="flex-1">
                 <h1 className="text-4xl font-bold mb-4 text-black">{song.title}</h1>
                 <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -105,6 +124,7 @@ export default function ExplanationPage() {
                   <span className="block">Producer : {song.producer || "정보 없음"}</span>
                   <span className="block">Release date : {song.release_date || "정보 없음"}</span>
                 </p>
+
                 <button
                   onClick={handleTranslate}
                   className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg shadow hover:bg-gray-900"
@@ -113,14 +133,31 @@ export default function ExplanationPage() {
                   Translate & Interpretation
                 </button>
               </div>
+
+              {/* 외부 링크 */}
               <div className="w-48">
                 <h2 className="text-xl font-semibold mb-4 text-black">External Link</h2>
                 <ul className="space-y-4 text-black">
-                  <li className="flex items-center gap-2"><img src="/icons/YouTube.svg" className="w-5 h-5" />YouTube</li>
-                  <li className="flex items-center gap-2"><img src="/icons/Spotify.svg" className="w-5 h-5" />Spotify</li>
-                  <li className="flex items-center gap-2"><img src="/icons/AppleMusic.png" className="w-5 h-5" />Apple Music</li>
-                  <li className="flex items-center gap-2"><img src="/icons/Melon.png" className="w-5 h-5" />Melon</li>
-                  <li className="flex items-center gap-2"><img src="/icons/Genie.png" className="w-5 h-5" />Genie Music</li>
+                  <li className="flex items-center gap-2">
+                    <img src="/icons/YouTube.svg" alt="YouTube" className="w-5 h-5" />
+                    <span>YouTube</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <img src="/icons/Spotify.svg" alt="Spotify" className="w-5 h-5" />
+                    <span>Spotify</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <img src="/icons/AppleMusic.png" alt="Apple Music" className="w-5 h-5" />
+                    <span>Apple Music</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <img src="/icons/Melon.png" alt="Melon" className="w-5 h-5" />
+                    <span>Melon</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <img src="/icons/Genie.png" alt="Genie Music" className="w-5 h-5" />
+                    <span>Genie Music</span>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -130,9 +167,10 @@ export default function ExplanationPage() {
               <div className="bg-white p-6 rounded-lg shadow border border-gray-200 h-full">
                 <h2 className="text-2xl font-semibold mb-4 text-black">Original Verse</h2>
                 <div className="whitespace-pre-wrap text-sm leading-relaxed text-black font-sans">
-                  {lyrics || "가사를 불러오지 못했습니다."}
+                  {lyrics}
                 </div>
               </div>
+
               <div className="bg-white p-6 rounded-lg shadow border border-gray-200 h-full">
                 <h2 className="text-2xl font-semibold mb-4 text-black">Verse’tory Translate</h2>
                 {loading ? (
@@ -142,7 +180,9 @@ export default function ExplanationPage() {
                     {translation}
                   </div>
                 ) : (
-                  <p className="text-gray-400">아직 번역이 없습니다. [Translate & Interpretation] 버튼을 눌러주세요.</p>
+                  <p className="text-gray-400">
+                    아직 번역이 없습니다. [Translate &amp; Interpretation] 버튼을 눌러주세요.
+                  </p>
                 )}
               </div>
             </div>
@@ -157,7 +197,9 @@ export default function ExplanationPage() {
                 ) : aboutKo ? (
                   <div className="whitespace-pre-wrap text-black">{aboutKo}</div>
                 ) : about ? (
-                  <p className="text-gray-400">아직 번역이 없습니다. [Translate & Interpretation] 버튼을 눌러주세요.</p>
+                  <p className="text-gray-400">
+                    아직 번역이 없습니다. 상단의 [Translate &amp; Interpretation] 버튼을 눌러주세요.
+                  </p>
                 ) : (
                   <p className="text-gray-400">About 정보가 없습니다.</p>
                 )}
@@ -169,6 +211,7 @@ export default function ExplanationPage() {
           </>
         )}
       </main>
+
       <Footer />
     </div>
   );

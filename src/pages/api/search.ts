@@ -1,95 +1,77 @@
+// pages/api/search.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { load } from "cheerio";
+
+const GENIUS_API_TOKEN = process.env.GENIUS_API_TOKEN!;
+const RAPIDAPI_KEY = process.env.MUSIXMATCH_API_KEY!;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
-  const GENIUS_API_TOKEN = process.env.GENIUS_API_TOKEN;
-
   if (!id || typeof id !== "string") {
     return res.status(400).json({ error: "곡 ID가 유효하지 않습니다." });
   }
 
   try {
-    // 1) 곡 메타데이터
+    // 1) Genius API로 곡 메타데이터 조회
     const songRes = await fetch(`https://api.genius.com/songs/${id}`, {
       headers: { Authorization: `Bearer ${GENIUS_API_TOKEN}` },
     });
-    if (!songRes.ok) throw new Error(`Genius API 곡 요청 실패: ${songRes.status}`);
+    if (!songRes.ok) throw new Error(`Genius API 요청 실패: ${songRes.status}`);
 
-    const songData = await songRes.json();
-    const song = songData.response.song;
-
-    const producers = song.producer_artists?.map((a: any) => a.name) || [];
+    const { response: { song } } = await songRes.json();
+    const title = song.title;
+    const artist = song.primary_artist?.name || "";
+    const producers = song.producer_artists?.map((a: any) => a.name).join(", ") || null;
     const about = song.description?.plain || null;
 
-    // 2) 가사 페이지 HTML 크롤링
-    const pageRes = await fetch(song.url);
-    const html = await pageRes.text();
-    const $ = load(html);
+    // 2) RapidAPI Musixmatch: 검색 요청
+    const searchUrl = `https://musixmatch-song-lyrics-api.p.rapidapi.com/search?q=${encodeURIComponent(`${title} ${artist}`)}`;
+    const searchRes = await fetch(searchUrl, {
+      headers: {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "musixmatch-song-lyrics-api.p.rapidapi.com",
+      },
+    });
 
     let lyrics = "";
+    if (searchRes.ok) {
+      const searchJson = await searchRes.json();
+      const tracks = searchJson.tracks;
+      const trackId = tracks?.[0]?.id;
 
-    // 3) __NEXT_DATA__ JSON 찾기
-    const nextDataScript = $('script#__NEXT_DATA__').html();
-    if (nextDataScript) {
-      try {
-        const nextData = JSON.parse(nextDataScript);
+      if (trackId) {
+        const lyricsUrl = `https://musixmatch-song-lyrics-api.p.rapidapi.com/track_lyrics?id=${trackId}`;
+        const lyricsRes = await fetch(lyricsUrl, {
+          headers: {
+            "X-RapidAPI-Key": RAPIDAPI_KEY,
+            "X-RapidAPI-Host": "musixmatch-song-lyrics-api.p.rapidapi.com",
+          },
+        });
 
-        // 구조 확인: Genius 프론트의 pageProps 내부
-        const lyricsHtml =
-          nextData?.props?.pageProps?.songPage?.lyricsData?.lyrics?.body?.html;
-
-        if (lyricsHtml) {
-          const $lyrics = load(lyricsHtml);
-          lyrics = $lyrics.text();
+        if (lyricsRes.ok) {
+          const lyricsJson = await lyricsRes.json();
+          lyrics = lyricsJson.lyrics || "";
         }
-      } catch (err) {
-        console.error(">>> [DEBUG] __NEXT_DATA__ 파싱 실패:", err);
       }
     }
 
-    // 4) fallback: 기존 구조
     if (!lyrics) {
-      lyrics =
-        $('[data-lyrics-container="true"]').map((_, el) => $(el).text()).get().join("\n") ||
-        $(".Lyrics__Container").map((_, el) => $(el).text()).get().join("\n");
+      console.warn(`[DEBUG] RapidAPI 가사 없음 for "${title}" by "${artist}"`);
+      lyrics = "가사를 불러오지 못했습니다.";
     }
 
-    // 5) fallback2: <p> 태그 모아보기
-    if (!lyrics) {
-      lyrics = $("p").map((_, el) => $(el).text()).get().join("\n");
-    }
-
-    // 6) 후처리
-    if (lyrics) {
-      lyrics = lyrics
-        .replace(/&nbsp;/gi, " ")
-        .replace(/&amp;/gi, "&")
-        .replace(/Translations.*\n?/gi, "")
-        .replace(/Contributors.*\n?/gi, "")
-        .replace(/Read More/gi, "")
-        .replace(/Follow @genius.*/gi, "")
-        .replace(/^\d+\s*$/gm, "")
-        .replace(/\n{2,}/g, "\n\n")
-        .trim();
-    }
-
-    console.log(">>> [DEBUG] Extracted Lyrics (id:", id, ")\n", lyrics?.slice(0, 300));
-
-    // 7) 응답
     res.status(200).json({
       id: song.id,
-      title: song.title,
-      artist: song.primary_artist?.name,
+      title,
+      artist,
       album: song.album?.name || null,
       release_date: song.release_date || null,
       album_cover: song.song_art_image_url,
-      producer: producers.length ? producers.join(", ") : null,
+      producer: producers,
       about,
       lyrics,
     });
-  } catch (e) {
-    console.error("곡 데이터 가져오기 실패:", e);
+  } catch (err) {
+    console.error("곡 데이터 추출 실패:", err);
     res.status(500).json({ error: "곡 데이터를 가져오는 중 오류 발생" });
   }
 }
