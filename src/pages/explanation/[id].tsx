@@ -12,19 +12,20 @@ export default function ExplanationPage() {
   const [lyrics, setLyrics] = useState("");
   const [about, setAbout] = useState("");
   const [translation, setTranslation] = useState("");
-  const [aboutKo, setAboutKo] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // About states
+  const [aboutExpanded, setAboutExpanded] = useState(false);
+  const [aboutText, setAboutText] = useState("");
   const [aboutLoading, setAboutLoading] = useState(false);
 
-  // 곡 정보 + 가사 불러오기
+  // Comments states
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
+
   useEffect(() => {
     if (!id) return;
-
-    // 초기화
     setTranslation("");
-    setAboutKo("");
     setLoading(false);
-    setAboutLoading(false);
 
     fetch(`/api/search?id=${id}`)
       .then((res) => res.json())
@@ -36,60 +37,31 @@ export default function ExplanationPage() {
       .catch((err) => console.error("곡 데이터 가져오기 실패:", err));
   }, [id]);
 
-  // 번역 요청
   const handleTranslate = async () => {
-    if (!lyrics && !about) return;
-
+    if (!lyrics) return;
     const songId = id;
     const songTitle = song?.title || "";
 
-    // 가사 번역
-    if (lyrics) {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/interpret", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lyrics,
-            about,
-            mode: "translate",
-            songId,
-            songTitle,
-          }),
-        });
-        const data = await res.json();
-        setTranslation(data.result || "");
-      } catch (e) {
-        console.error(e);
-        setTranslation("⚠️ 번역 중 오류가 발생했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    // About 번역
-    if (about) {
-      setAboutLoading(true);
-      try {
-        const res2 = await fetch("/api/interpret", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            about,
-            mode: "about",
-            songId,
-            songTitle,
-          }),
-        });
-        const data2 = await res2.json();
-        setAboutKo(data2.result || "");
-      } catch (e) {
-        console.error(e);
-        setAboutKo("⚠️ About 번역 중 오류가 발생했습니다.");
-      } finally {
-        setAboutLoading(false);
-      }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/interpret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lyrics,
+          about,
+          mode: "translate",
+          songId,
+          songTitle,
+        }),
+      });
+      const data = await res.json();
+      setTranslation(data.result || "");
+    } catch (e) {
+      console.error(e);
+      setTranslation("⚠️ 번역 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -122,7 +94,9 @@ export default function ExplanationPage() {
                   <span className="block">Title : {song.title}</span>
                   <span className="block">Artist : {song.artist}</span>
                   <span className="block">Producer : {song.producer || "정보 없음"}</span>
-                  <span className="block">Release date : {song.release_date || "정보 없음"}</span>
+                  <span className="block">
+                    Release date : {song.release_date || "정보 없음"}
+                  </span>
                 </p>
 
                 <button
@@ -181,33 +155,123 @@ export default function ExplanationPage() {
                   </div>
                 ) : (
                   <p className="text-gray-400">
-                    아직 번역이 없습니다. [Translate &amp; Interpretation] 버튼을 눌러주세요.
+                    아직 번역이 없습니다. [Translate & Interpretation] 버튼을 눌러주세요.
                   </p>
                 )}
               </div>
             </div>
 
+            {/* Send Feedback 버튼 */}
+            <div className="flex justify-center my-24">
+              <button
+                onClick={() =>
+                  router.push(`/feedback?song=${encodeURIComponent(song.title || "")}`)
+                }
+                className="px-6 py-3 flex items-center gap-2 bg-black text-white rounded-lg shadow hover:bg-gray-900"
+              >
+                <img src="/icons/paper-plane.svg" alt="Send" className="w-5 h-5" />
+                Send Feedback
+              </button>
+            </div>
+
             {/* About */}
-            <section className="mt-12">
-              <h2 className="text-3xl font-bold text-black mb-2">About</h2>
-              <p className="text-gray-500 mb-4">Genius의 About을 한국어로 자연스럽게 번역한 내용</p>
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                {aboutLoading ? (
-                  <p className="text-gray-400">About 번역 중...</p>
-                ) : aboutKo ? (
-                  <div className="whitespace-pre-wrap text-black">{aboutKo}</div>
-                ) : about ? (
-                  <p className="text-gray-400">
-                    아직 번역이 없습니다. 상단의 [Translate &amp; Interpretation] 버튼을 눌러주세요.
-                  </p>
-                ) : (
-                  <p className="text-gray-400">About 정보가 없습니다.</p>
-                )}
-              </div>
+            <section className="mt-24">
+              <h2 className="text-3xl font-bold text-black mb-4">About</h2>
+
+              {!aboutExpanded ? (
+                <div className="relative transition-all duration-300 ease-in-out max-h-80 overflow-hidden">
+                  <div className="whitespace-pre-wrap text-black leading-relaxed">
+                    {about}
+                  </div>
+
+                  <div className="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-white to-transparent flex justify-center items-end pb-4">
+                    <button
+                      onClick={async () => {
+                        setAboutExpanded(true);
+                        setAboutLoading(true);
+                        try {
+                          const res = await fetch("/api/interpret", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              about,
+                              mode: "about",
+                              songId: id,
+                              songTitle: song?.title || "",
+                            }),
+                          });
+                          const data = await res.json();
+                          setAboutText(data.result || "");
+                        } catch (e) {
+                          console.error("About 번역 실패:", e);
+                          setAboutText("⚠️ 번역 중 오류가 발생했습니다.");
+                        } finally {
+                          setAboutLoading(false);
+                        }
+                      }}
+                      className="px-6 py-2 bg-transparent text-black border border-black rounded-lg hover:text-gray-700"
+                    >
+                      Extend
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {aboutLoading ? (
+                    <p className="text-gray-400">About 번역 중...</p>
+                  ) : (
+                    <div className="whitespace-pre-wrap text-black leading-relaxed">
+                      {aboutText}
+                    </div>
+                  )}
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => {
+                        setAboutExpanded(false);
+                        setAboutText("");
+                      }}
+                      className="px-6 py-2 bg-transparent text-black border border-black rounded-lg hover:text-gray-700"
+                    >
+                      Collapse
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
 
-            {/* 댓글 */}
-            {id && <Comments songId={id} />}
+            {/* Comments */}
+            <section className="mt-24">
+              <h2 className="text-3xl font-bold text-black mb-4">Comments</h2>
+              <div
+                className={`relative transition-all duration-300 ease-in-out ${
+                  commentsExpanded ? "max-h-none" : "max-h-80 overflow-hidden"
+                }`}
+              >
+                <Comments songId={id!} />
+
+                {!commentsExpanded && (
+                  <div className="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-white to-transparent flex justify-center items-end pb-4">
+                    <button
+                      onClick={() => setCommentsExpanded(true)}
+                      className="px-6 py-2 bg-transparent text-black border border-black rounded-lg hover:text-gray-700"
+                    >
+                      Extend
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {commentsExpanded && (
+                <div className="flex justify-center mt-2">
+                  <button
+                    onClick={() => setCommentsExpanded(false)}
+                    className="px-6 py-2 bg-transparent text-black border border-black rounded-lg hover:text-gray-700"
+                  >
+                    Collapse
+                  </button>
+                </div>
+              )}
+            </section>
           </>
         )}
       </main>
