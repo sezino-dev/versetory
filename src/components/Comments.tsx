@@ -8,6 +8,10 @@ type Comment = {
   user_id: string;
   content: string;
   created_at: string;
+  users?: {
+    email: string;
+    provider: string;
+  };
 };
 
 export default function Comments({ songId }: { songId: string }) {
@@ -25,7 +29,7 @@ export default function Comments({ songId }: { songId: string }) {
       if (Array.isArray(data)) {
         setComments(data);
       } else {
-        setComments([]); // 비정상 응답 → 빈 배열
+        setComments([]);
       }
     } catch (err) {
       console.error("댓글 불러오기 실패:", err);
@@ -45,15 +49,19 @@ export default function Comments({ songId }: { songId: string }) {
     if (!content.trim()) return;
 
     setLoading(true);
+
     await fetch("/api/comments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         songId,
         userId: user?.id,
+        email: user?.email, // ✅ email 추가
+        provider: user?.app_metadata?.provider || "unknown", // ✅ provider 추가
         content,
       }),
     });
+
     setContent("");
     await fetchComments();
     setLoading(false);
@@ -104,9 +112,15 @@ export default function Comments({ songId }: { songId: string }) {
           comments.map((c) => (
             <div key={c.id} className="border rounded-md p-3 bg-white">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">{c.user_id}</span>
+                <span className="text-sm text-gray-500">
+                  {c.users?.provider
+                    ? `${c.users.provider}_${c.user_id.slice(0, 5)}`
+                    : c.user_id}
+                </span>
                 <span className="text-xs text-gray-400">
-                  {new Date(c.created_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                  {new Date(c.created_at).toLocaleString("ko-KR", {
+                    timeZone: "Asia/Seoul",
+                  })}
                 </span>
               </div>
               <p className="text-black mt-2 whitespace-pre-wrap">{c.content}</p>

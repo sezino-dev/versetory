@@ -11,10 +11,45 @@ interface SignInModalProps {
 export default function SignInModal({ onClose }: SignInModalProps) {
   const [agreed, setAgreed] = useState(false)
 
-  // 동의 후에만 OAuth 시작
+  // ✅ 소셜 로그인 & users 테이블 업데이트
   const handleOAuth = async (provider: 'google' | 'facebook' | 'kakao') => {
     if (!agreed) return
-    await supabase.auth.signInWithOAuth({ provider })
+
+    const { data, error } = await supabase.auth.signInWithOAuth({ provider })
+
+    if (error) {
+      console.error('OAuth 로그인 실패:', error.message)
+      return
+    }
+
+    // ✅ 로그인 성공 후 users 테이블 업데이트
+    const {
+      data: { user },
+      error: sessionError,
+    } = await supabase.auth.getUser()
+
+    if (sessionError) {
+      console.error('세션 가져오기 실패:', sessionError.message)
+      return
+    }
+
+    if (user) {
+      const { error: upsertError } = await supabase.from('users').upsert(
+        {
+          id: user.id,
+          email: user.email,
+          provider: user.app_metadata?.provider || 'unknown',
+          avatar_url: user.user_metadata?.avatar_url || null,
+        },
+        { onConflict: 'id' } // 같은 id면 업데이트
+      )
+
+      if (upsertError) {
+        console.error('유저 정보 저장 실패:', upsertError.message)
+      } else {
+        console.log('✅ 유저 정보 저장/업데이트 완료')
+      }
+    }
   }
 
   return (
@@ -55,7 +90,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
           </label>
         </div>
 
-        {/* Divider (상단 여백 80px, 하단 여백 없음) */}
+        {/* Divider */}
         <hr className="border-neutral-200 mt-[80px]" />
 
         {/* OAuth Buttons */}
@@ -72,12 +107,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
               }
             `}
           >
-            <Image
-              src="/icons/google.svg"
-              alt="Google"
-              width={24}
-              height={24}
-            />
+            <Image src="/icons/google.svg" alt="Google" width={24} height={24} />
             <span className="text-base font-semibold text-gray-700">
               Sign in with Google
             </span>
@@ -95,12 +125,7 @@ export default function SignInModal({ onClose }: SignInModalProps) {
               }
             `}
           >
-            <Image
-              src="/icons/facebook.svg"
-              alt="Facebook"
-              width={24}
-              height={24}
-            />
+            <Image src="/icons/facebook.svg" alt="Facebook" width={24} height={24} />
             <span className="text-base font-semibold text-gray-700">
               Sign in with Facebook
             </span>
@@ -118,19 +143,14 @@ export default function SignInModal({ onClose }: SignInModalProps) {
               }
             `}
           >
-            <Image
-              src="/icons/kakao.svg"
-              alt="Kakao"
-              width={24}
-              height={24}
-            />
+            <Image src="/icons/kakao.svg" alt="Kakao" width={24} height={24} />
             <span className="text-base font-semibold text-gray-700">
               Sign in with Kakao
             </span>
           </button>
         </div>
 
-        {/* Divider (상단 여백 80px, 하단 여백 없음) */}
+        {/* Divider */}
         <hr className="border-neutral-200 mt-[80px]" />
 
         {/* Bottom Spacer */}
