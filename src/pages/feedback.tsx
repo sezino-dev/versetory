@@ -1,9 +1,13 @@
+'use client'
+
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import FeedbackSuccessModal from "../components/FeedbackSuccessModal"; // ✅ 모달 import
 
+// ✅ Supabase client 생성
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -12,6 +16,7 @@ const supabase = createClient(
 export default function FeedbackPage() {
   const router = useRouter();
 
+  // ===== 입력 상태 =====
   const [songTitle, setSongTitle] = useState("");
   const [reason, setReason] = useState("");
   const [title, setTitle] = useState("");
@@ -19,15 +24,35 @@ export default function FeedbackPage() {
   const [accountType, setAccountType] = useState("");
   const [content, setContent] = useState("");
   const [agree, setAgree] = useState(false);
+
+  // ===== 상태 =====
   const [loading, setLoading] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false); // ✅ 성공 모달
   const [message, setMessage] = useState("");
 
+  // ✅ URL 파라미터에서 곡 제목 받기
   useEffect(() => {
     if (router.query.song) {
       setSongTitle(router.query.song as string);
     }
   }, [router.query.song]);
 
+  // ✅ 로그인 사용자 정보 불러오기
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setEmail(user.email || "");
+        setAccountType(user.app_metadata?.provider || "");
+      } else {
+        // 로그인 안 돼 있으면 홈으로 리다이렉트
+        router.push("/");
+      }
+    };
+    fetchUser();
+  }, [router]);
+
+  // ✅ 피드백 제출
   const handleSubmit = async () => {
     if (!content.trim() || !agree) {
       setMessage("⚠️ 피드백 내용과 약관 동의가 필요합니다.");
@@ -35,29 +60,66 @@ export default function FeedbackPage() {
     }
 
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from("feedback").insert([
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setMessage("⚠️ 로그인 후 이용 가능합니다.");
+      setLoading(false);
+      return;
+    }
+
+    // ✅ users 테이블에서 존재 확인
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", user.id)
+      .single();
+
+    if (!existingUser) {
+      // users에 새로 삽입
+      const { error: insertUserError } = await supabase.from("users").insert([
+        {
+          id: user.id,
+          email: user.email,
+          provider: user.app_metadata?.provider || "unknown",
+        },
+      ]);
+
+      if (insertUserError) {
+        console.error("유저 생성 실패:", insertUserError);
+        setMessage("⚠️ 유저 정보를 저장하는 중 오류가 발생했습니다.");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // ✅ feedback 저장
+    const { error: feedbackError } = await supabase.from("feedback").insert([
       {
-        user_id: user?.id || null,
-        content,
+        user_id: user.id,
+        song_title: songTitle || null,
+        feedback_title: title || null,
+        reason: reason || null,
+        content: content || null,
       },
     ]);
 
-    if (error) {
-      setMessage("⚠️ 저장 중 오류가 발생했습니다.");
+    if (feedbackError) {
+      console.error("피드백 저장 실패:", feedbackError);
+      setMessage("⚠️ 피드백 저장 중 오류가 발생했습니다.");
     } else {
-      setMessage("✅ 피드백이 제출되었습니다. 감사합니다!");
+      // ✅ 성공 시 모달 열기
+      setSuccessOpen(true);
+      // 폼 초기화
       setSongTitle("");
       setReason("");
       setTitle("");
-      setEmail("");
-      setAccountType("");
       setContent("");
       setAgree(false);
+      setMessage("");
     }
+
     setLoading(false);
   };
 
@@ -65,7 +127,6 @@ export default function FeedbackPage() {
     <div className="bg-white min-h-screen flex flex-col">
       <Header />
 
-      {/* ✅ 폭 확장 */}
       <main className="flex-1 max-w-5xl mx-auto px-6 py-16 w-full">
         <h1 className="text-3xl font-bold text-black mb-2">Send Feedback</h1>
         <p className="text-gray-600 mb-10">
@@ -99,7 +160,7 @@ export default function FeedbackPage() {
           </select>
         </div>
 
-        {/* 제목 + 이메일 + 계정 */}
+        {/* 제목 + 유저 정보 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
           <input
             type="text"
@@ -109,27 +170,20 @@ export default function FeedbackPage() {
             className="w-full border border-gray-300 rounded-lg px-4 py-3 text-black h-[52px]"
           />
           <div className="flex gap-4 w-full">
+            {/* 이메일 (자동, 수정 불가) */}
             <input
               type="email"
-              placeholder="Example@gmail.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-black h-[52px]"
+              readOnly
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-black h-[52px] bg-gray-100"
             />
-            <select
-              value={accountType}
-              onChange={(e) => setAccountType(e.target.value)}
-              className={`flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-3 h-[52px] ${
-                accountType === "" ? "text-gray-400" : "text-black"
-              }`}
-            >
-              <option value="" disabled hidden>
-                Select Account
-              </option>
-              <option value="Google Account">Google Account</option>
-              <option value="Kakao Account">Kakao Account</option>
-              <option value="Facebook Account">Facebook Account</option>
-            </select>
+            {/* Account (자동, 수정 불가) */}
+            <input
+              type="text"
+              value={accountType ? `${accountType} Account` : ""}
+              readOnly
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-black h-[52px] bg-gray-100"
+            />
           </div>
         </div>
 
@@ -169,6 +223,16 @@ export default function FeedbackPage() {
       </main>
 
       <Footer />
+
+      {/* ✅ 성공 모달 */}
+      {successOpen && (
+        <FeedbackSuccessModal
+          onClose={() => {
+            setSuccessOpen(false);
+            router.back(); // OK 누르면 이전 페이지로 이동
+          }}
+        />
+      )}
     </div>
   );
 }

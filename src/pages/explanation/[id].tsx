@@ -3,27 +3,37 @@ import { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import Comments from "../../components/Comments";
+import SignInModal from "../../components/SignInModal"; // 로그인 모달
+import { createClient } from "@supabase/supabase-js";
+
+// ✅ Supabase client 생성
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function ExplanationPage() {
   const router = useRouter();
   const { id } = router.query as { id?: string };
 
-  const [song, setSong] = useState<any>(null);
-  const [lyrics, setLyrics] = useState("");
-  const [about, setAbout] = useState("");
-  const [translation, setTranslation] = useState("");
-  const [loading, setLoading] = useState(false);
+  // ================= 상태 관리 =================
+  const [song, setSong] = useState<any>(null); // 곡 메타 정보
+  const [lyrics, setLyrics] = useState(""); // 원문 가사
+  const [about, setAbout] = useState(""); // About (곡 설명)
+  const [translation, setTranslation] = useState(""); // 번역된 가사
+  const [loading, setLoading] = useState(false); // 번역 로딩 상태
 
-  // About states
-  const [aboutExpanded, setAboutExpanded] = useState(false);
-  const [aboutText, setAboutText] = useState("");
-  const [aboutLoading, setAboutLoading] = useState(false);
+  const [aboutExpanded, setAboutExpanded] = useState(false); // About 확장 여부
+  const [aboutText, setAboutText] = useState(""); // 번역된 About
+  const [aboutLoading, setAboutLoading] = useState(false); // About 로딩 상태
 
-  // Comments states
-  const [commentsExpanded, setCommentsExpanded] = useState(false);
+  const [commentsExpanded, setCommentsExpanded] = useState(false); // 댓글 확장 여부
+  const [signInOpen, setSignInOpen] = useState(false); // 로그인 모달 상태
 
+  // ================= 곡 데이터 불러오기 =================
   useEffect(() => {
     if (!id) return;
+
     setTranslation("");
     setLoading(false);
 
@@ -37,6 +47,7 @@ export default function ExplanationPage() {
       .catch((err) => console.error("곡 데이터 가져오기 실패:", err));
   }, [id]);
 
+  // ================= 번역 요청 =================
   const handleTranslate = async () => {
     if (!lyrics) return;
     const songId = id;
@@ -71,14 +82,16 @@ export default function ExplanationPage() {
 
       <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
         {!song ? (
+          // ================= 로딩 상태 =================
           <div className="flex flex-col items-center justify-center py-20">
             <p className="text-black text-lg mb-6">곡 정보를 불러오는 중...</p>
             <img src="/icons/loading.gif" alt="Loading..." className="w-12 h-12" />
           </div>
         ) : (
           <>
-            {/* 상단 곡 정보 */}
+            {/* ================= 상단 곡 정보 ================= */}
             <div className="flex flex-col md:flex-row items-start gap-12 mb-12">
+              {/* 앨범 커버 */}
               <div className="flex flex-col items-center">
                 <img
                   src={song.album_cover}
@@ -88,6 +101,7 @@ export default function ExplanationPage() {
                 <span className="mt-2 text-sm text-gray-500">Album Cover</span>
               </div>
 
+              {/* 곡 메타 정보 */}
               <div className="flex-1">
                 <h1 className="text-4xl font-bold mb-4 text-black">{song.title}</h1>
                 <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -99,6 +113,7 @@ export default function ExplanationPage() {
                   </span>
                 </p>
 
+                {/* 번역 버튼 */}
                 <button
                   onClick={handleTranslate}
                   className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg shadow hover:bg-gray-900"
@@ -136,8 +151,9 @@ export default function ExplanationPage() {
               </div>
             </div>
 
-            {/* 좌/우 가사 */}
+            {/* ================= 가사 및 번역 ================= */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+              {/* 원문 가사 */}
               <div className="bg-white p-6 rounded-lg shadow border border-gray-200 h-full">
                 <h2 className="text-2xl font-semibold mb-4 text-black">Original Verse</h2>
                 <div className="whitespace-pre-wrap text-sm leading-relaxed text-black font-sans">
@@ -145,6 +161,7 @@ export default function ExplanationPage() {
                 </div>
               </div>
 
+              {/* 번역 가사 */}
               <div className="bg-white p-6 rounded-lg shadow border border-gray-200 h-full">
                 <h2 className="text-2xl font-semibold mb-4 text-black">Verse’tory Translate</h2>
                 {loading ? (
@@ -161,12 +178,19 @@ export default function ExplanationPage() {
               </div>
             </div>
 
-            {/* Send Feedback 버튼 */}
+            {/* ================= Send Feedback 버튼 ================= */}
             <div className="flex justify-center my-24">
               <button
-                onClick={() =>
-                  router.push(`/feedback?song=${encodeURIComponent(song.title || "")}`)
-                }
+                onClick={async () => {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) {
+                    // 로그인 안 되어 있으면 모달 열기
+                    setSignInOpen(true);
+                  } else {
+                    // 로그인 된 경우에만 feedback 페이지로 이동
+                    router.push(`/feedback?song=${encodeURIComponent(song.title || "")}`);
+                  }
+                }}
                 className="px-6 py-3 flex items-center gap-2 bg-black text-white rounded-lg shadow hover:bg-gray-900"
               >
                 <img src="/icons/paper-plane.svg" alt="Send" className="w-5 h-5" />
@@ -174,16 +198,14 @@ export default function ExplanationPage() {
               </button>
             </div>
 
-            {/* About */}
+            {/* ================= About 섹션 ================= */}
             <section className="mt-24">
               <h2 className="text-3xl font-bold text-black mb-4">About</h2>
 
               {!aboutExpanded ? (
+                // 접힌 상태 (그라데이션 + Extend 버튼)
                 <div className="relative transition-all duration-300 ease-in-out max-h-80 overflow-hidden">
-                  <div className="whitespace-pre-wrap text-black leading-relaxed">
-                    {about}
-                  </div>
-
+                  <div className="whitespace-pre-wrap text-black leading-relaxed">{about}</div>
                   <div className="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-white to-transparent flex justify-center items-end pb-4">
                     <button
                       onClick={async () => {
@@ -216,6 +238,7 @@ export default function ExplanationPage() {
                   </div>
                 </div>
               ) : (
+                // 펼친 상태
                 <div className="space-y-4">
                   {aboutLoading ? (
                     <p className="text-gray-400">About 번역 중...</p>
@@ -239,7 +262,7 @@ export default function ExplanationPage() {
               )}
             </section>
 
-            {/* Comments */}
+            {/* ================= Comments 섹션 ================= */}
             <section className="mt-24">
               <h2 className="text-3xl font-bold text-black mb-4">Comments</h2>
               <div
@@ -275,6 +298,9 @@ export default function ExplanationPage() {
           </>
         )}
       </main>
+
+      {/* ================= 로그인 모달 ================= */}
+      {signInOpen && <SignInModal onClose={() => setSignInOpen(false)} />}
 
       <Footer />
     </div>

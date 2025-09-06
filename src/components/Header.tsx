@@ -1,20 +1,49 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSession, useUser } from '@supabase/auth-helpers-react'
 import { supabase } from '@/lib/supabaseClient'
 import GeniusAutocomplete from './GeniusAutocomplete'
 import SignInModal from './SignInModal'
+import { useRouter } from 'next/router'
 
 export default function Header() {
   const session = useSession()
   const user = useUser()
+  const router = useRouter()
+
   const [showModal, setShowModal] = useState(false)
 
-  const handleSignIn = () => setShowModal(true)
+  // ✅ 로그인 이벤트 리스너 (자동 리다이렉트 제거)
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          // 로그인 성공 시 모달만 닫기
+          setShowModal(false)
+        }
+      }
+    )
+    return () => {
+      authListener?.subscription.unsubscribe()
+    }
+  }, [])
 
+  // ✅ Send Feedback 버튼 클릭 핸들러
+  const handleSendFeedback = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      // 로그인 안 되어 있으면 SignInModal 열기
+      setShowModal(true)
+    } else {
+      // 로그인 되어 있으면 feedback 페이지로 이동
+      router.push('/feedback')
+    }
+  }
+
+  // ✅ 로그아웃
   const handleSignOut = async () => {
     await supabase.auth.signOut()
   }
@@ -41,9 +70,12 @@ export default function Header() {
               <Link href="/about" className="hover:text-gray-700">
                 About Verse’tory
               </Link>
-              <Link href="/feedback" className="hover:text-gray-700">
+              <button
+                onClick={handleSendFeedback}
+                className="hover:text-gray-700"
+              >
                 Send Feedback
-              </Link>
+              </button>
             </nav>
 
             {/* 로그인 상태 */}
@@ -68,7 +100,7 @@ export default function Header() {
               </div>
             ) : (
               <button
-                onClick={handleSignIn}
+                onClick={() => setShowModal(true)}
                 className="px-3 py-1 text-sm text-black rounded hover:text-gray-700 transition"
               >
                 Sign In
