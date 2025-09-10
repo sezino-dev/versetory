@@ -24,9 +24,12 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'lh3.googleusercontent.com', // oogle 프로필 이미지
+        hostname: 'lh3.googleusercontent.com', // Google 프로필 이미지
       },
     ],
+  },
+  devIndicators: {
+    buildActivity: false, // 개발 모드 하단 N 버튼 제거
   },
 }
 

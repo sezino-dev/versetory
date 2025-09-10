@@ -22,15 +22,12 @@ export default function Comments({ songId }: { songId: string }) {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 댓글 불러오기
   async function fetchComments() {
     try {
       const res = await fetch(`/api/comments?songId=${songId}`);
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setComments(data);
-      } else {
-        setComments([]);
-      }
+      setComments(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("댓글 불러오기 실패:", err);
       setComments([]);
@@ -41,6 +38,7 @@ export default function Comments({ songId }: { songId: string }) {
     if (songId) fetchComments();
   }, [songId]);
 
+  // 댓글 등록
   async function handleSubmit() {
     if (!session) {
       alert("로그인이 필요합니다.");
@@ -49,15 +47,14 @@ export default function Comments({ songId }: { songId: string }) {
     if (!content.trim()) return;
 
     setLoading(true);
-
     await fetch("/api/comments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         songId,
         userId: user?.id,
-        email: user?.email, // ✅ email 추가
-        provider: user?.app_metadata?.provider || "unknown", // ✅ provider 추가
+        email: user?.email,
+        provider: user?.app_metadata?.provider || "unknown",
         content,
       }),
     });
@@ -67,6 +64,7 @@ export default function Comments({ songId }: { songId: string }) {
     setLoading(false);
   }
 
+  // 댓글 삭제
   async function handleDelete(id: number, commentUserId: string) {
     if (user?.id !== commentUserId) {
       return alert("본인 댓글만 삭제할 수 있습니다.");
@@ -81,11 +79,9 @@ export default function Comments({ songId }: { songId: string }) {
   }
 
   return (
-    <section className="mt-12">
-      <h2 className="text-2xl font-bold text-black mb-4">Comments</h2>
-
-      {/* 입력 */}
-      <div className="mb-6">
+    <div className="space-y-6">
+      {/* 입력창 */}
+      <div>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -104,7 +100,7 @@ export default function Comments({ songId }: { songId: string }) {
         </div>
       </div>
 
-      {/* 목록 */}
+      {/* 댓글 목록 */}
       <div className="space-y-4">
         {comments.length === 0 ? (
           <p className="text-gray-500">아직 댓글이 없습니다.</p>
@@ -136,6 +132,6 @@ export default function Comments({ songId }: { songId: string }) {
           ))
         )}
       </div>
-    </section>
+    </div>
   );
 }
