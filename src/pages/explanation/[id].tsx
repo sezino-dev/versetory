@@ -1,4 +1,5 @@
 // /pages/explanation/[id].tsx
+
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import Header from "../../components/Header";
@@ -20,9 +21,9 @@ type Interpretation = {
     song_id: number;
     line_number: number | null;
     fragment_text: string;
-    translated_text?: string | null;   // 한국어 줄 번역
-    annotation_text?: string | null;   // 영문 Genius annotation
-    annotation_ko?: string | null;     // 한국어 Genius annotation
+    translated_text?: string | null;
+    annotation_text?: string | null;
+    annotation_ko?: string | null;
 };
 
 // 한 줄에 매칭될 Interpretation 선택 (annotation_ko 우선)
@@ -35,18 +36,20 @@ function pickInterpForLine(
 
     const byIndex = interps.filter((i) => i.line_number === idx + 1);
     const byFragment = interps.filter(
-        (i) => i.fragment_text && line.toLowerCase().includes(i.fragment_text.toLowerCase())
+        (i) =>
+            i.fragment_text &&
+            line.toLowerCase().includes(i.fragment_text.toLowerCase())
     );
 
     let candidates: Interpretation[] = [...byIndex, ...byFragment];
 
-    // 한국어 주석이 있는 후보가 하나라도 있으면 그 집합만 사용
-    const withKo = candidates.filter((c) => c.annotation_ko && c.annotation_ko.trim() !== "");
+    const withKo = candidates.filter(
+        (c) => c.annotation_ko && c.annotation_ko.trim() !== ""
+    );
     if (withKo.length) candidates = withKo;
 
     if (!candidates.length) return undefined;
 
-    // 중복 제거 후 fragment_text 길이 긴 순으로 정렬
     const unique = new Map<string, Interpretation>();
     candidates.forEach((c) => unique.set(`${c.line_number}-${c.fragment_text}`, c));
 
@@ -77,21 +80,48 @@ export default function ExplanationPage() {
 
     const [interpretations, setInterpretations] = useState<Interpretation[]>([]);
 
-    // 초기 데이터 로드
+    /**
+     * 곡 ID가 바뀔 때:
+     * 1) 이전 곡 상태를 초기화해 로딩 문구가 즉시 보이게 함
+     * 2) 새 요청만 유효하도록 이전 요청을 Abort
+     */
     useEffect(() => {
         if (!id) return;
+
+        // 상태 초기화 (로딩 문구 표시)
+        setSong(null);
+        setLyrics("");
+        setAbout("");
+        setInterpretations([]);
         setTranslation("");
         setLoading(false);
+        setAboutExpanded(false);
+        setAboutText("");
+        setAboutLoading(false);
+        setCommentsExpanded(false);
 
-        fetch(`/api/search?id=${id}`)
-            .then((res) => res.json())
-            .then((data) => {
+        const ac = new AbortController();
+
+        (async () => {
+            try {
+                const res = await fetch(`/api/search?id=${id}`, { signal: ac.signal });
+                const data = await res.json();
+                if (ac.signal.aborted) return;
+
                 setSong(data);
                 setLyrics(data.lyrics || "");
                 setAbout(data.about || "");
-                setInterpretations(Array.isArray(data.interpretations) ? data.interpretations : []);
-            })
-            .catch((err) => console.error("곡 데이터 가져오기 실패:", err));
+                setInterpretations(
+                    Array.isArray(data.interpretations) ? data.interpretations : []
+                );
+            } catch (err) {
+                if (!ac.signal.aborted) {
+                    console.error("곡 데이터 가져오기 실패:", err);
+                }
+            }
+        })();
+
+        return () => ac.abort();
     }, [id]);
 
     // 번역 완료 후 interpretations 리프레시
@@ -100,7 +130,9 @@ export default function ExplanationPage() {
         try {
             const res = await fetch(`/api/search?id=${id}`);
             const data = await res.json();
-            setInterpretations(Array.isArray(data.interpretations) ? data.interpretations : []);
+            setInterpretations(
+                Array.isArray(data.interpretations) ? data.interpretations : []
+            );
         } catch (e) {
             console.error("interpretations 갱신 실패:", e);
         }
@@ -162,13 +194,11 @@ export default function ExplanationPage() {
         setLoading(true);
         setTranslation("");
 
-        // 원문 줄 정보
-        const srcLines = lyrics.replace(/\r\n/g, "\n").split("\n");
-        const committed: string[] = new Array(srcLines.length).fill("");
+        const lineCount = lyrics.replace(/\r\n/g, "\n").split("\n").length;
+        const committed: string[] = new Array(lineCount).fill("");
         let partial = "";
         let lineIdx = 0;
 
-        // 델타를 라인 단위로 커밋
         const pushDelta = (delta: string) => {
             if (!delta) return;
 
@@ -184,7 +214,7 @@ export default function ExplanationPage() {
                 nl = partial.indexOf("\n");
             }
 
-            // 미완 줄(개행 전)은 미리보기로 현재 인덱스에 얹음
+            // 미완 줄은 미리보기로 현재 인덱스에 얹음
             const preview = committed.slice();
             if (lineIdx < preview.length) preview[lineIdx] = partial;
 
@@ -192,12 +222,11 @@ export default function ExplanationPage() {
         };
 
         try {
-            // 서버 SSE 요청
             const res = await fetch(`/api/interpret?stream=1`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Accept": "text/event-stream",
+                    Accept: "text/event-stream",
                 },
                 body: JSON.stringify({
                     lyrics,
@@ -208,23 +237,22 @@ export default function ExplanationPage() {
                 }),
             });
 
-            if (res.ok && res.headers.get("content-type")?.includes("text/event-stream")) {
+            if (
+                res.ok &&
+                res.headers.get("content-type")?.includes("text/event-stream")
+            ) {
                 await consumeSSE(
                     res,
-                    (delta) => {
-                        pushDelta(delta);
-                    },
-                    (finalText) => {
-                        setTranslation((finalText || "").replace(/\r\n/g, "\n"));
-                    }
+                    (delta) => pushDelta(delta),
+                    (finalText) =>
+                        setTranslation((finalText || "").replace(/\r\n/g, "\n"))
                 );
             } else {
-                // SSE가 아니면 폴백(일괄)
+                // SSE 미지원 폴백
                 const data = await res.json();
                 setTranslation((data.result || "").replace(/\r\n/g, "\n"));
             }
 
-            // 번역/주석 저장 완료 후 최신 해석 DB 재조회
             await refreshInterpretations();
         } catch (e) {
             console.error("번역 스트리밍 실패, 일반 모드로 재시도:", e);
@@ -232,7 +260,13 @@ export default function ExplanationPage() {
                 const res2 = await fetch("/api/interpret", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ lyrics, about, mode: "translate", songId, songTitle }),
+                    body: JSON.stringify({
+                        lyrics,
+                        about,
+                        mode: "translate",
+                        songId,
+                        songTitle,
+                    }),
                 });
                 const data = await res2.json();
                 setTranslation((data.result || "").replace(/\r\n/g, "\n"));
@@ -263,7 +297,7 @@ export default function ExplanationPage() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Accept": "text/event-stream",
+                    Accept: "text/event-stream",
                 },
                 body: JSON.stringify({
                     about,
@@ -273,7 +307,10 @@ export default function ExplanationPage() {
                 }),
             });
 
-            if (res.ok && res.headers.get("content-type")?.includes("text/event-stream")) {
+            if (
+                res.ok &&
+                res.headers.get("content-type")?.includes("text/event-stream")
+            ) {
                 let acc = "";
                 await consumeSSE(
                     res,
@@ -281,9 +318,7 @@ export default function ExplanationPage() {
                         acc += delta;
                         setAboutText(acc);
                     },
-                    (finalText) => {
-                        setAboutText((finalText || "").toString());
-                    }
+                    (finalText) => setAboutText((finalText || "").toString())
                 );
             } else {
                 const data = await res.json();
@@ -325,11 +360,11 @@ export default function ExplanationPage() {
                 original={line}
                 highlightText={interp?.fragment_text}
                 translated={interp?.translated_text || undefined}
-                // annotation_ko가 있으면 우선 사용, 없으면 영문 주석
+                // annotation_ko 우선, 없으면 영문 주석
                 explanation={
                     interp?.annotation_ko && interp.annotation_ko.trim()
                         ? interp.annotation_ko
-                        : (interp?.annotation_text || undefined)
+                        : interp?.annotation_text || undefined
                 }
             />
         );
@@ -363,7 +398,7 @@ export default function ExplanationPage() {
                         <div className="flex flex-col md:flex-row items-start gap-12 mb-12">
                             <div className="flex flex-col items-center">
                                 <img
-                                    src={song.album_cover}
+                                    src={song.album_cover || "/no-image.png"}
                                     alt={`${song.title} album cover`}
                                     className="w-64 h-64 rounded-lg shadow object-cover"
                                 />
@@ -392,31 +427,56 @@ export default function ExplanationPage() {
                                 <h2 className="text-xl font-semibold mb-4 text-black">External Link</h2>
                                 <ul className="space-y-4 text-black">
                                     <li>
-                                        <a href={youTubeMusicUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
+                                        <a
+                                            href={youTubeMusicUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 hover:underline"
+                                        >
                                             <img src="/icons/YouTube.svg" alt="YouTube Music" className="w-5 h-5" />
                                             <span>YouTube Music</span>
                                         </a>
                                     </li>
                                     <li>
-                                        <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
+                                        <a
+                                            href={spotifyUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 hover:underline"
+                                        >
                                             <img src="/icons/Spotify.svg" alt="Spotify" className="w-5 h-5" />
                                             <span>Spotify</span>
                                         </a>
                                     </li>
                                     <li>
-                                        <a href={appleMusicUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
+                                        <a
+                                            href={appleMusicUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 hover:underline"
+                                        >
                                             <img src="/icons/AppleMusic.png" alt="Apple Music" className="w-5 h-5" />
                                             <span>Apple Music</span>
                                         </a>
                                     </li>
                                     <li>
-                                        <a href={melonUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
+                                        <a
+                                            href={melonUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 hover:underline"
+                                        >
                                             <img src="/icons/Melon.png" alt="Melon" className="w-5 h-5" />
                                             <span>Melon</span>
                                         </a>
                                     </li>
                                     <li>
-                                        <a href={genieUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
+                                        <a
+                                            href={genieUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 hover:underline"
+                                        >
                                             <img src="/icons/Genie.png" alt="Genie Music" className="w-5 h-5" />
                                             <span>Genie Music</span>
                                         </a>
@@ -440,11 +500,9 @@ export default function ExplanationPage() {
                                         </div>
                                         <div className="text-sm leading-relaxed text-gray-700 font-sans">
                                             {
-                                                // 번역 텍스트가 이미 도착했다면 로딩 여부와 관계없이 항상 보여줌
                                                 translation
                                                     ? (translation.split("\n")[idx] || "")
-                                                    : // 아직 번역이 없을 때만 로딩 문구/가이드 문구 표시
-                                                    loading
+                                                    : loading
                                                         ? (idx === 0 && <p className="text-gray-400">Verse’tory 해석중...</p>)
                                                         : (idx === 0 && (
                                                             <p className="text-gray-400">
@@ -494,7 +552,9 @@ export default function ExplanationPage() {
                             ) : (
                                 <div className="space-y-4">
                                     <div className="whitespace-pre-wrap text-black leading-relaxed">
-                                        {aboutLoading && !aboutText && <span className="text-gray-400">About 번역 중...</span>}
+                                        {aboutLoading && !aboutText && (
+                                            <span className="text-gray-400">About 번역 중...</span>
+                                        )}
                                         {aboutText}
                                     </div>
                                     <div className="flex justify-center">
@@ -516,7 +576,8 @@ export default function ExplanationPage() {
                         <section className="mt-24">
                             <h2 className="text-3xl font-bold text-black mb-4">Comments</h2>
                             <div
-                                className={`relative transition-all duration-300 ease-in-out ${commentsExpanded ? "max-h-none" : "max-h-80 overflow-hidden"}`}
+                                className={`relative transition-all duration-300 ease-in-out ${commentsExpanded ? "max-h-none" : "max-h-80 overflow-hidden"
+                                    }`}
                             >
                                 <Comments songId={id!} />
                                 {!commentsExpanded && (
