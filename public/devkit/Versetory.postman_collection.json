@@ -1,0 +1,177 @@
+{
+    "info": {
+        "name": "Versetory Devkit (Beta)",
+        "_postman_id": "8d1c7c3e-9f3d-4c6c-8f22-111111111111",
+        "description": "Minimal demo endpoints. Importable in Insomnia.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseURL",
+            "value": "https://your-domain.example"
+        },
+        {
+            "key": "apiKey",
+            "value": ""
+        },
+        {
+            "key": "songId",
+            "value": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+            "key": "query",
+            "value": "kendrick"
+        }
+    ],
+    "item": [
+        {
+            "name": "Search Songs (q)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseURL}}/api/search?q={{query}}",
+                    "host": [
+                        "{{baseURL}}"
+                    ],
+                    "path": [
+                        "api",
+                        "search"
+                    ],
+                    "query": [
+                        {
+                            "key": "q",
+                            "value": "{{query}}"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Interpretations (songId)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseURL}}/api/interpretations?songId={{songId}}",
+                    "host": [
+                        "{{baseURL}}"
+                    ],
+                    "path": [
+                        "api",
+                        "interpretations"
+                    ],
+                    "query": [
+                        {
+                            "key": "songId",
+                            "value": "{{songId}}"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Comments (songId)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseURL}}/api/comments?songId={{songId}}",
+                    "host": [
+                        "{{baseURL}}"
+                    ],
+                    "path": [
+                        "api",
+                        "comments"
+                    ],
+                    "query": [
+                        {
+                            "key": "songId",
+                            "value": "{{songId}}"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Post Comment",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"songId\": \"{{songId}}\",\n  \"content\": \"Great interpretation.\",\n  \"interpretationId\": null\n}"
+                },
+                "url": {
+                    "raw": "{{baseURL}}/api/comments",
+                    "host": [
+                        "{{baseURL}}"
+                    ],
+                    "path": [
+                        "api",
+                        "comments"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Send Feedback",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"content\": \"Suggestion: ...\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseURL}}/api/feedback",
+                    "host": [
+                        "{{baseURL}}"
+                    ],
+                    "path": [
+                        "api",
+                        "feedback"
+                    ]
+                }
+            }
+        }
+    ]
+}

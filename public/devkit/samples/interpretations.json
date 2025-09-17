@@ -1,0 +1,10 @@
+[
+    {
+        "id": "mock-int-1",
+        "song_id": "demo-1",
+        "line_number": 1,
+        "original_lyric": "[Intro] Psst, I see dead people",
+        "translated": "Psst, I see dead people (ko)",
+        "explanation": "Invokes a horror-movie meme to set the tone."
+    }
+]
