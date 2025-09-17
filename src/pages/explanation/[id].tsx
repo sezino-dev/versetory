@@ -1,7 +1,7 @@
 // /pages/explanation/[id].tsx
 
 import { useRouter } from "next/router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import Comments from "../../components/Comments";
@@ -26,7 +26,12 @@ type Interpretation = {
     annotation_ko?: string | null;
 };
 
-// 한 줄에 매칭될 Interpretation 선택 (annotation_ko 우선)
+/**
+ * 한 줄에 매칭될 Interpretation 선택 (annotation_ko 우선)
+ * @param line 원문 한 줄
+ * @param idx 줄 인덱스(0-based)
+ * @param interps DB에서 가져온 해설 목록
+ */
 function pickInterpForLine(
     line: string,
     idx: number,
@@ -64,6 +69,15 @@ export default function ExplanationPage() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
 
+    // 현재 페이지에서 유효한 라우트 id를 보관
+    const activeIdRef = useRef<string | undefined>(undefined);
+    useEffect(() => {
+        activeIdRef.current = id;
+    }, [id]);
+
+    // 라우팅 진행 여부(전환 시작 즉시 가림)
+    const [isRouting, setIsRouting] = useState(false);
+
     // 페이지 상태
     const [song, setSong] = useState<any>(null);
     const [lyrics, setLyrics] = useState("");
@@ -81,14 +95,45 @@ export default function ExplanationPage() {
     const [interpretations, setInterpretations] = useState<Interpretation[]>([]);
 
     /**
+     * 라우트 전환 타이밍 제어:
+     * - routeChangeStart: 즉시 화면 가림 + 상태 초기화(잔상 제거)
+     * - routeChangeComplete/Error: 화면 표시 재개
+     */
+    useEffect(() => {
+        const onStart = () => {
+            setIsRouting(true);
+            // 전환 시작과 동시에 주요 상태 비움 → 이전 곡 잔상 차단
+            setSong(null);
+            setLyrics("");
+            setAbout("");
+            setInterpretations([]);
+            setTranslation("");
+            setLoading(false);
+            setAboutExpanded(false);
+            setAboutText("");
+            setAboutLoading(false);
+            setCommentsExpanded(false);
+        };
+        const onDone = () => setIsRouting(false);
+
+        router.events.on("routeChangeStart", onStart);
+        router.events.on("routeChangeComplete", onDone);
+        router.events.on("routeChangeError", onDone);
+        return () => {
+            router.events.off("routeChangeStart", onStart);
+            router.events.off("routeChangeComplete", onDone);
+            router.events.off("routeChangeError", onDone);
+        };
+    }, [router.events]);
+
+    /**
      * 곡 ID가 바뀔 때:
-     * 1) 이전 곡 상태를 초기화해 로딩 문구가 즉시 보이게 함
-     * 2) 새 요청만 유효하도록 이전 요청을 Abort
+     * - 초기 로딩 상태로 리셋
+     * - 새 곡 데이터 fetch
      */
     useEffect(() => {
         if (!id) return;
 
-        // 상태 초기화 (로딩 문구 표시)
         setSong(null);
         setLyrics("");
         setAbout("");
@@ -138,7 +183,12 @@ export default function ExplanationPage() {
         }
     };
 
-    // SSE 이벤트 파서 유틸 (data: {type, data} 만 처리)
+    /**
+     * SSE 이벤트 파서 유틸 (data: { type, data } 만 처리)
+     * @param res SSE Response
+     * @param onDelta 델타 수신 콜백
+     * @param onFinal 최종 수신 콜백
+     */
     const consumeSSE = async (
         res: Response,
         onDelta: (chunk: string) => void,
@@ -188,6 +238,8 @@ export default function ExplanationPage() {
     const handleTranslate = async () => {
         if (!lyrics) return;
 
+        // 번역 시작 시점의 유효 id를 캡처(전환 중 오래된 업데이트 무시 가드)
+        const startedForId = activeIdRef.current;
         const songId = id;
         const songTitle = song?.title || "";
 
@@ -200,8 +252,10 @@ export default function ExplanationPage() {
         let lineIdx = 0;
 
         const pushDelta = (delta: string) => {
-            if (!delta) return;
+            // 다른 곡으로 전환되었으면 더 이상 이 번역의 델타를 반영하지 않음
+            if (activeIdRef.current !== startedForId) return;
 
+            if (!delta) return;
             partial += delta.replace(/\r\n/g, "\n");
 
             // 개행이 들어오면 줄 확정
@@ -244,15 +298,22 @@ export default function ExplanationPage() {
                 await consumeSSE(
                     res,
                     (delta) => pushDelta(delta),
-                    (finalText) =>
-                        setTranslation((finalText || "").replace(/\r\n/g, "\n"))
+                    (finalText) => {
+                        // 최종 수신 시에도 현재 곡이 맞는지 확인
+                        if (activeIdRef.current !== startedForId) return;
+                        setTranslation((finalText || "").replace(/\r\n/g, "\n"));
+                    }
                 );
             } else {
                 // SSE 미지원 폴백
                 const data = await res.json();
+                // 전환되었으면 반영하지 않음
+                if (activeIdRef.current !== startedForId) return;
                 setTranslation((data.result || "").replace(/\r\n/g, "\n"));
             }
 
+            // 전환되었으면 후처리 불필요
+            if (activeIdRef.current !== startedForId) return;
             await refreshInterpretations();
         } catch (e) {
             console.error("번역 스트리밍 실패, 일반 모드로 재시도:", e);
@@ -269,14 +330,19 @@ export default function ExplanationPage() {
                     }),
                 });
                 const data = await res2.json();
+                if (activeIdRef.current !== startedForId) return;
                 setTranslation((data.result || "").replace(/\r\n/g, "\n"));
                 await refreshInterpretations();
             } catch (e2) {
                 console.error(e2);
-                setTranslation("⚠️ 번역 중 오류가 발생했습니다.");
+                if (activeIdRef.current === startedForId) {
+                    setTranslation("번역 중 오류가 발생했습니다.");
+                }
             }
         } finally {
-            setLoading(false);
+            if (activeIdRef.current === startedForId) {
+                setLoading(false);
+            }
         }
     };
 
@@ -287,6 +353,8 @@ export default function ExplanationPage() {
             setAboutText("");
             return;
         }
+
+        const startedForId = activeIdRef.current;
 
         setAboutExpanded(true);
         setAboutLoading(true);
@@ -315,13 +383,18 @@ export default function ExplanationPage() {
                 await consumeSSE(
                     res,
                     (delta) => {
+                        if (activeIdRef.current !== startedForId) return;
                         acc += delta;
                         setAboutText(acc);
                     },
-                    (finalText) => setAboutText((finalText || "").toString())
+                    (finalText) => {
+                        if (activeIdRef.current !== startedForId) return;
+                        setAboutText((finalText || "").toString());
+                    }
                 );
             } else {
                 const data = await res.json();
+                if (activeIdRef.current !== startedForId) return;
                 setAboutText(data.result || "");
             }
         } catch (e) {
@@ -338,13 +411,18 @@ export default function ExplanationPage() {
                     }),
                 });
                 const data = await res2.json();
+                if (activeIdRef.current !== startedForId) return;
                 setAboutText(data.result || "");
             } catch (e2) {
                 console.error(e2);
-                setAboutText("⚠️ 번역 중 오류가 발생했습니다.");
+                if (activeIdRef.current === startedForId) {
+                    setAboutText("번역 중 오류가 발생했습니다.");
+                }
             }
         } finally {
-            setAboutLoading(false);
+            if (activeIdRef.current === startedForId) {
+                setAboutLoading(false);
+            }
         }
     };
 
@@ -387,7 +465,7 @@ export default function ExplanationPage() {
             <Header />
 
             <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
-                {!id || !song ? (
+                {isRouting || !id || !song ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <p className="text-black text-lg mb-6">곡 정보를 불러오는 중...</p>
                         <img src="/icons/loading.gif" alt="Loading..." className="w-12 h-12" />
@@ -485,8 +563,8 @@ export default function ExplanationPage() {
                             </div>
                         </div>
 
-                        {/* 가사 + 번역 */}
-                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200 h-full">
+                        {/* 가사 + 번역 (id 변경 시 리마운트되도록 key 부여) */}
+                        <div key={id} className="bg-white p-6 rounded-lg shadow border border-gray-200 h-full">
                             <div className="grid grid-cols-2 gap-8 mb-6">
                                 <h3 className="text-3xl font-bold text-black">Original Verse</h3>
                                 <h3 className="text-3xl font-bold text-black">Verse’tory Verse</h3>
