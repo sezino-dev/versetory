@@ -1,14 +1,17 @@
+// /src/pages/feedback.tsx
+
 'use client'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { useSession as useNaverSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FeedbackSuccessModal from '@/components/FeedbackSuccessModal'
 import TermsModal from '@/components/TermsModal'
 
-// Supabase client
+// Supabase client (토큰 획득 및 일부 정보 조회)
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -16,6 +19,7 @@ const supabase = createClient(
 
 export default function FeedbackPage() {
     const router = useRouter()
+    const { data: naverSession, status: naverStatus } = useNaverSession()
 
     // 입력 상태
     const [songTitle, setSongTitle] = useState('')
@@ -39,74 +43,61 @@ export default function FeedbackPage() {
         }
     }, [router.query.song])
 
-    // 로그인 사용자 정보 불러오기
+    // 로그인 사용자 정보 불러오기: Naver → Supabase 순
     useEffect(() => {
         const fetchUser = async () => {
+            // 1) NextAuth(Naver)
+            if (naverStatus === 'authenticated' && naverSession?.user) {
+                setEmail(naverSession.user.email ?? '')
+                setAccountType('naver')
+                return
+            }
+
+            // 2) Supabase
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 setEmail(user.email || '')
                 setAccountType(user.app_metadata?.provider || '')
-            } else {
-                router.push('/')
+                return
             }
+
+            // 미로그인 시 홈으로
+            router.push('/')
         }
         fetchUser()
-    }, [router])
+    }, [naverStatus, naverSession, router])
 
-    // 제출
+    // 제출: 서버 API 경유(네이버/구글/페북 통일)
     const handleSubmit = async () => {
         if (!content.trim() || !agree) {
-            setMessage('⚠️ 피드백 내용과 약관 동의가 필요합니다.')
+            setMessage('피드백 내용과 약관 동의가 필요합니다.')
             return
         }
 
         setLoading(true)
+        try {
+            // Supabase 로그인자는 access_token을 Authorization 헤더로 전달(선택)
+            const { data } = await supabase.auth.getSession()
+            const accessToken = data.session?.access_token
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+            if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-            setMessage('⚠️ 로그인 후 이용 가능합니다.')
-            setLoading(false)
-            return
-        }
+            const r = await fetch('/api/feedback', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    message: content.trim(),
+                    song_title: songTitle || null,
+                    feedback_title: title || null,
+                    reason: reason || null,
+                }),
+            })
 
-        // users 존재 확인
-        const { data: existingUser } = await supabase
-            .from('users')
-            .select('id')
-            .eq('id', user.id)
-            .single()
-
-        if (!existingUser) {
-            const { error: insertUserError } = await supabase.from('users').insert([
-                {
-                    id: user.id,
-                    email: user.email,
-                    provider: user.app_metadata?.provider || 'unknown',
-                },
-            ])
-            if (insertUserError) {
-                console.error('유저 생성 실패:', insertUserError)
-                setMessage('⚠️ 유저 정보를 저장하는 중 오류가 발생했습니다.')
-                setLoading(false)
-                return
+            if (!r.ok) {
+                const err = await r.json().catch(() => ({}))
+                throw new Error(err.error ?? '피드백 저장 실패')
             }
-        }
 
-        // feedback 저장
-        const { error: feedbackError } = await supabase.from('feedback').insert([
-            {
-                user_id: user.id,
-                song_title: songTitle || null,
-                feedback_title: title || null,
-                reason: reason || null,
-                content: content || null,
-            },
-        ])
-
-        if (feedbackError) {
-            console.error('피드백 저장 실패:', feedbackError)
-            setMessage('⚠️ 피드백 저장 중 오류가 발생했습니다.')
-        } else {
             setSuccessOpen(true)
             setSongTitle('')
             setReason('')
@@ -114,9 +105,12 @@ export default function FeedbackPage() {
             setContent('')
             setAgree(false)
             setMessage('')
+        } catch (e) {
+            console.error(e)
+            setMessage('피드백 저장 중 오류가 발생했습니다.')
+        } finally {
+            setLoading(false)
         }
-
-        setLoading(false)
     }
 
     return (
@@ -142,8 +136,7 @@ export default function FeedbackPage() {
                     <select
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
-                        className={`w-full border border-gray-300 rounded-lg px-4 py-3 h-[52px] ${reason === '' ? 'text-gray-400' : 'text-black'
-                            }`}
+                        className={`w-full border border-gray-300 rounded-lg px-4 py-3 h-[52px] ${reason === '' ? 'text-gray-400' : 'text-black'}`}
                     >
                         <option value="" disabled hidden>
                             Please select a reason for your feedback
@@ -217,10 +210,7 @@ export default function FeedbackPage() {
                     <button
                         onClick={handleSubmit}
                         disabled={!agree || loading}
-                        className={`px-6 py-3 rounded-lg ${!agree || loading
-                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                            : 'bg-black text-white hover:bg-gray-900'
-                            }`}
+                        className={`px-6 py-3 rounded-lg ${!agree || loading ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-black text-white hover:bg-gray-900'}`}
                     >
                         {loading ? 'Submitting...' : 'Send Feedback'}
                     </button>
