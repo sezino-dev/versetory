@@ -119,9 +119,15 @@ export default function FeedbackPage() {
 
             <main className="flex-1 max-w-5xl mx-auto px-6 py-16 w-full">
                 <h1 className="text-3xl font-bold text-black mb-2">Send Feedback</h1>
-                <p className="text-gray-600 mb-10">
-                    Your valuable feedback helps us improve and deliver a better-quality service. <br />
-                    사용자 여러분의 소중한 피드백이 더 나은 품질의 서비스를 제공하는데 큰 힘이 됩니다
+
+                {/* EN 기본 → hover 시 KO로 전환 */}
+                <p className="text-gray-600 mb-10 group cursor-default transition-all duration-200">
+                    <span className="inline group-hover:hidden">
+                        Your valuable feedback helps us improve and deliver a better-quality service.
+                    </span>
+                    <span className="hidden group-hover:inline">
+                        사용자 여러분의 소중한 피드백이 더 나은 품질의 서비스를 제공하는데 큰 힘이 됩니다
+                    </span>
                 </p>
 
                 {/* 곡 제목 + 이유 */}
@@ -210,7 +216,10 @@ export default function FeedbackPage() {
                     <button
                         onClick={handleSubmit}
                         disabled={!agree || loading}
-                        className={`px-6 py-3 rounded-lg ${!agree || loading ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-black text-white hover:bg-gray-900'}`}
+                        className={`px-6 py-3 rounded-lg ${!agree || loading
+                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                            : 'bg-black text-white hover:bg-gray-900'
+                            }`}
                     >
                         {loading ? 'Submitting...' : 'Send Feedback'}
                     </button>
