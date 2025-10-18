@@ -1,0 +1,331 @@
+<!-- /public/slides/reveal.html -->
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Verse’tory — Demo Deck (reveal.js)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- reveal.js core -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4/dist/reveal.css" />
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4/dist/theme/black.css" id="theme" />
+
+    <!-- code highlight theme -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4/plugin/highlight/monokai.css" />
+
+    <style>
+        /* 상단 75% 라이브 데모 오버레이 */
+        #liveOverlay {
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 75vh;
+            background: #000;
+            z-index: 1000;
+            display: none;
+        }
+
+        #liveOverlayFrame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        /* 하단 25% 전역 스트립 오버레이 (클릭은 내부만 받도록) */
+        #liveStrip {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 25vh;
+            background: rgba(0, 0, 0, 0.15);
+            z-index: 1400;
+            display: none;
+            padding: 12px 24px;
+            box-sizing: border-box;
+            backdrop-filter: blur(2px);
+            pointer-events: none;
+        }
+
+        #liveStripInner {
+            width: 92%;
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 16px 22px;
+            box-sizing: border-box;
+            color: #fff;
+            pointer-events: auto;
+        }
+
+        .strip-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+
+        .strip-title {
+            margin: 0;
+            font-size: 28px;
+            line-height: 1.2;
+        }
+
+        .strip-page {
+            font-size: 16px;
+            font-weight: 600;
+            opacity: 0.95;
+        }
+
+        .strip-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .strip-card {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: rgba(0, 0, 0, 0.25);
+            font-size: 18px;
+            line-height: 1.4;
+        }
+
+        .strip-code {
+            max-height: calc(25vh - 72px);
+            overflow: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .strip-code pre,
+        .strip-code code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        /* show-live 구간에서 기본 slide-number/controls 가려지지 않도록 위로 */
+        body.show-live .reveal .slide-number {
+            position: fixed;
+            top: 8px;
+            right: 12px;
+            bottom: auto;
+            z-index: 2001;
+        }
+
+        body.show-live .reveal .controls {
+            z-index: 2001;
+        }
+
+        /* 일반 슬라이드 가독성 */
+        .reveal h1,
+        .reveal h2,
+        .reveal h3,
+        .reveal p,
+        .reveal li {
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 전역 라이브 데모 오버레이 -->
+    <div id="liveOverlay">
+        <iframe id="liveOverlayFrame" src="http://localhost:3000" title="Verse’tory Live"></iframe>
+    </div>
+
+    <!-- 전역 하단 스트립 오버레이 -->
+    <div id="liveStrip">
+        <div id="liveStripInner"></div>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- 1. 전체페이지 슬라이드 -->
+            <section>
+                <h1>Verse’tory</h1>
+                <h3>AI-powered cultural interpretation & translation</h3>
+                <p>Arrow/Space: 다음 · S: 발표자 노트 · F: 전체화면</p>
+                <aside class="notes">오프닝 후 2 → 라이브 데모(3~5).</aside>
+            </section>
+
+            <!-- 2. 전체페이지 슬라이드 -->
+            <section>
+                <h2>Agenda</h2>
+                <ol>
+                    <li>문제 정의와 콘셉트</li>
+                    <li>핵심 기능</li>
+                    <li>라이브 데모</li>
+                    <li>Q&A</li>
+                </ol>
+                <aside class="notes">다음부터 show-live.</aside>
+            </section>
+
+            <!-- 3. show-live: 하단 스트립 템플릿 (코드) -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">Live Demo — 로그인 세션 확인 및 라우팅</h3>
+                        <span class="strip-page"></span>
+                    </div>
+                    <div class="strip-code">
+                        <pre><code class="language-typescript" data-trim>
+// 로그인 사용자 정보 불러오기: Naver → Supabase 순
+useEffect(() => {
+  const fetchUser = async () => {
+    // 1) NextAuth(Naver)
+    if (naverStatus === 'authenticated' && naverSession?.user) {
+      setEmail(naverSession.user.email ?? '')
+      setAccountType('naver')
+      return
+    }
+
+    // 2) Supabase
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      setEmail(user.email || '')
+      setAccountType(user.app_metadata?.provider || '')
+      return
+    }
+
+    // 미로그인 시 홈으로
+    router.push('/')
+  }
+  fetchUser()
+}, [naverStatus, naverSession, router])
+</code></pre>
+                    </div>
+                </template>
+                <aside class="notes">오버레이 상단에서 실제 로그인 상태 시연.</aside>
+            </section>
+
+            <!-- 4. show-live: 하단 스트립 템플릿 -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">Live Demo — 가사 로드와 섹션 라벨</h3>
+                        <span class="strip-page"></span>
+                    </div>
+                    <div class="strip-grid">
+                        <div class="strip-card">[Verse]/[Chorus] 라벨 보존</div>
+                        <div class="strip-card">원문 줄 수 1:1 유지</div>
+                        <div class="strip-card">괄호 내 가사 처리 규칙</div>
+                    </div>
+                </template>
+                <aside class="notes">로딩 지연 시 캐싱/프리페치 언급.</aside>
+            </section>
+
+            <!-- 5. show-live: 하단 스트립 템플릿 -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">Live Demo — 번역·해설과 Feedback</h3>
+                        <span class="strip-page"></span>
+                    </div>
+                    <div class="strip-grid">
+                        <div class="strip-card">문화 맥락/레퍼런스 해설</div>
+                        <div class="strip-card">Comments / Feedback</div>
+                        <div class="strip-card">에러 핸들링 및 로깅</div>
+                    </div>
+                </template>
+                <aside class="notes">이후 전체 슬라이드로 복귀.</aside>
+            </section>
+
+            <!-- 6. 전체페이지 슬라이드 -->
+            <section>
+                <h2>Architecture Overview</h2>
+                <ul>
+                    <li>Next.js (Pages Router) + Supabase</li>
+                    <li>Genius API · OpenAI API · Caching</li>
+                    <li>DB: songs, interpretations, comments, feedback, users</li>
+                </ul>
+                <aside class="notes">데모 플로우 매핑.</aside>
+            </section>
+
+            <!-- 7. 전체페이지 슬라이드 -->
+            <section>
+                <h2>Q&A</h2>
+                <p>필요 시 3~5로 복귀해 추가 시연.</p>
+                <aside class="notes">질문에 맞춰 데모 재진행.</aside>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- reveal.js scripts -->
+    <script src="https://unpkg.com/reveal.js@4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@4/plugin/notes/notes.js"></script>
+    <script src="https://unpkg.com/reveal.js@4/plugin/highlight/highlight.js"></script>
+
+    <script>
+        Reveal.initialize({
+            hash: true,
+            width: 1920, height: 1080,
+            margin: 0.04,
+            minScale: 0.2, maxScale: 2.0,
+            controls: true, progress: true, slideNumber: 'c/t',
+            center: true,
+            plugins: [RevealNotes, RevealHighlight]
+        });
+
+        function highlightInjectedCode(rootEl) {
+            const plugin = Reveal.getPlugin('highlight');
+            const hljs = plugin && plugin.hljs ? plugin.hljs : window.hljs;
+            if (!hljs || !rootEl) return;
+
+            if (!hljs.getLanguage('typescript') && hljs.getLanguage && hljs.getLanguage('ts') && hljs.registerAliases) {
+                hljs.registerAliases(['ts'], { languageName: 'typescript' });
+            }
+
+            rootEl.querySelectorAll('pre code').forEach((el) => {
+                if (![...el.classList].some(c => c.startsWith('language-'))) {
+                    el.classList.add('language-typescript');
+                }
+                hljs.highlightElement(el);
+            });
+        }
+
+        function renderStripFromSlide(slide) {
+            const tmpl = slide ? slide.querySelector('template.strip-template') : null;
+            const host = document.getElementById('liveStripInner');
+            if (!host) return;
+
+            if (tmpl) {
+                host.innerHTML = tmpl.innerHTML;
+                highlightInjectedCode(host);
+
+                const pageEl = host.querySelector('.strip-page');
+                if (pageEl) {
+                    const current = Reveal.getSlidePastCount() + 1;
+                    const total = Reveal.getTotalSlides();
+                    pageEl.textContent = `${current} / ${total}`;
+                }
+            } else {
+                host.innerHTML = '';
+            }
+        }
+
+        function updateLiveUI() {
+            const slide = Reveal.getCurrentSlide();
+            const isShowLive = slide && (slide.dataset.state || '').split(' ').includes('show-live');
+
+            document.getElementById('liveOverlay').style.display = isShowLive ? 'block' : 'none';
+            document.getElementById('liveStrip').style.display = isShowLive ? 'block' : 'none';
+
+            document.body.classList.toggle('show-live', !!isShowLive);
+
+            renderStripFromSlide(slide);
+        }
+
+        Reveal.on('ready', updateLiveUI);
+        Reveal.on('slidechanged', updateLiveUI);
+    </script>
+</body>
+
+</html>
