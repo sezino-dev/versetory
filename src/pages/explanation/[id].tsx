@@ -8,6 +8,10 @@ import Comments from "../../components/Comments";
 import SignInModal from "../../components/SignInModal";
 import HoverTooltip from "../../components/HoverTooltip";
 import { createClient } from "@supabase/supabase-js";
+import type {
+    RealtimePostgresInsertPayload,
+    RealtimePostgresUpdatePayload,
+} from "@supabase/supabase-js";
 
 // Supabase (client)
 const supabase = createClient(
@@ -18,7 +22,7 @@ const supabase = createClient(
 // 해설 레코드 타입
 type Interpretation = {
     id?: string;
-    song_id: number;
+    song_id: string;
     line_number: number | null;
     fragment_text: string;
     translated_text?: string | null;
@@ -41,16 +45,12 @@ function pickInterpForLine(
 
     const byIndex = interps.filter((i) => i.line_number === idx + 1);
     const byFragment = interps.filter(
-        (i) =>
-            i.fragment_text &&
-            line.toLowerCase().includes(i.fragment_text.toLowerCase())
+        (i) => i.fragment_text && line.toLowerCase().includes(i.fragment_text.toLowerCase())
     );
 
     let candidates: Interpretation[] = [...byIndex, ...byFragment];
 
-    const withKo = candidates.filter(
-        (c) => c.annotation_ko && c.annotation_ko.trim() !== ""
-    );
+    const withKo = candidates.filter((c) => c.annotation_ko && c.annotation_ko.trim() !== "");
     if (withKo.length) candidates = withKo;
 
     if (!candidates.length) return undefined;
@@ -127,9 +127,31 @@ export default function ExplanationPage() {
     }, [router.events]);
 
     /**
+     * interpretations만 신선 데이터로 가져오기
+     */
+    const fetchInterpretationsNoStore = async (songId: string): Promise<Interpretation[]> => {
+        const res = await fetch(`/api/search?id=${encodeURIComponent(songId)}&t=${Date.now()}`, {
+            cache: "no-store",
+        });
+        const data = await res.json();
+        return Array.isArray(data.interpretations) ? (data.interpretations as Interpretation[]) : [];
+    };
+
+    // 번역 완료 후 interpretations 리프레시
+    const refreshInterpretations = async () => {
+        if (!id) return;
+        try {
+            const next = await fetchInterpretationsNoStore(id);
+            setInterpretations(next);
+        } catch (e) {
+            console.error("interpretations 갱신 실패:", e);
+        }
+    };
+
+    /**
      * 곡 ID가 바뀔 때:
      * - 초기 로딩 상태로 리셋
-     * - 새 곡 데이터 fetch
+     * - 새 곡 데이터 fetch (no-store)
      */
     useEffect(() => {
         if (!id) return;
@@ -149,16 +171,17 @@ export default function ExplanationPage() {
 
         (async () => {
             try {
-                const res = await fetch(`/api/search?id=${id}`, { signal: ac.signal });
+                const res = await fetch(`/api/search?id=${encodeURIComponent(id)}&t=${Date.now()}`, {
+                    signal: ac.signal,
+                    cache: "no-store",
+                });
                 const data = await res.json();
                 if (ac.signal.aborted) return;
 
                 setSong(data);
                 setLyrics(data.lyrics || "");
                 setAbout(data.about || "");
-                setInterpretations(
-                    Array.isArray(data.interpretations) ? data.interpretations : []
-                );
+                setInterpretations(Array.isArray(data.interpretations) ? data.interpretations : []);
             } catch (err) {
                 if (!ac.signal.aborted) {
                     console.error("곡 데이터 가져오기 실패:", err);
@@ -169,19 +192,52 @@ export default function ExplanationPage() {
         return () => ac.abort();
     }, [id]);
 
-    // 번역 완료 후 interpretations 리프레시
-    const refreshInterpretations = async () => {
+    /**
+     * Supabase Realtime: interpretations 테이블 INSERT/UPDATE 구독
+     * annotation_ko가 생성/갱신되는 즉시 반영
+     */
+    useEffect(() => {
         if (!id) return;
-        try {
-            const res = await fetch(`/api/search?id=${id}`);
-            const data = await res.json();
-            setInterpretations(
-                Array.isArray(data.interpretations) ? data.interpretations : []
-            );
-        } catch (e) {
-            console.error("interpretations 갱신 실패:", e);
-        }
-    };
+
+        const sameSong = (row: any) => {
+            try {
+                return String(row.song_id) === String(id);
+            } catch {
+                return false;
+            }
+        };
+
+        const channel = supabase
+            .channel(`rt-interpretations-${id}`)
+            .on(
+                "postgres_changes",
+                { event: "INSERT", schema: "public", table: "interpretations" },
+                (payload: RealtimePostgresInsertPayload<any>) => {
+                    const row = payload.new;
+                    if (!sameSong(row)) return;
+                    setInterpretations((prev) => {
+                        if (prev.some((p) => p.id === row.id)) return prev;
+                        return [...prev, row as Interpretation];
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                { event: "UPDATE", schema: "public", table: "interpretations" },
+                (payload: RealtimePostgresUpdatePayload<any>) => {
+                    const row = payload.new;
+                    if (!sameSong(row)) return;
+                    setInterpretations((prev) =>
+                        prev.map((p) => (p.id === row.id ? ({ ...p, ...row } as Interpretation) : p))
+                    );
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [id]);
 
     /**
      * SSE 이벤트 파서 유틸 (data: { type, data } 만 처리)
@@ -291,15 +347,11 @@ export default function ExplanationPage() {
                 }),
             });
 
-            if (
-                res.ok &&
-                res.headers.get("content-type")?.includes("text/event-stream")
-            ) {
+            if (res.ok && res.headers.get("content-type")?.includes("text/event-stream")) {
                 await consumeSSE(
                     res,
                     (delta) => pushDelta(delta),
                     (finalText) => {
-                        // 최종 수신 시에도 현재 곡이 맞는지 확인
                         if (activeIdRef.current !== startedForId) return;
                         setTranslation((finalText || "").replace(/\r\n/g, "\n"));
                     }
@@ -307,14 +359,25 @@ export default function ExplanationPage() {
             } else {
                 // SSE 미지원 폴백
                 const data = await res.json();
-                // 전환되었으면 반영하지 않음
                 if (activeIdRef.current !== startedForId) return;
                 setTranslation((data.result || "").replace(/\r\n/g, "\n"));
             }
 
-            // 전환되었으면 후처리 불필요
             if (activeIdRef.current !== startedForId) return;
+
+            // 1차 즉시 갱신
             await refreshInterpretations();
+
+            // 짧은 폴링으로 annotation_ko 반영 보강
+            if (id) {
+                for (let i = 0; i < 6; i++) {
+                    const next = await fetchInterpretationsNoStore(id);
+                    setInterpretations(next);
+                    const hasKo = next.some((it) => (it.annotation_ko ?? "").trim() !== "");
+                    if (hasKo) break;
+                    await new Promise((r) => setTimeout(r, 1000));
+                }
+            }
         } catch (e) {
             console.error("번역 스트리밍 실패, 일반 모드로 재시도:", e);
             try {
@@ -375,10 +438,7 @@ export default function ExplanationPage() {
                 }),
             });
 
-            if (
-                res.ok &&
-                res.headers.get("content-type")?.includes("text/event-stream")
-            ) {
+            if (res.ok && res.headers.get("content-type")?.includes("text/event-stream")) {
                 let acc = "";
                 await consumeSSE(
                     res,
@@ -426,7 +486,11 @@ export default function ExplanationPage() {
         }
     };
 
-    // 가사 한 줄 렌더링
+    /**
+     * 가사 한 줄 렌더링
+     * - HoverTooltip에 annotation_ko와 annotation_text를 각각 전달
+     * - 컴포넌트 내부 우선순위 로직(ko > en > legacy)에 의해 자동 전환
+     */
     const renderLyricLine = (line: string, idx: number) => {
         if (!line.trim()) return <br key={idx} />;
 
@@ -434,16 +498,13 @@ export default function ExplanationPage() {
 
         return (
             <HoverTooltip
-                key={idx}
+                key={`${idx}-${interp?.id ?? "noid"}-${interp?.annotation_ko ? "ko" : interp?.annotation_text ? "en" : "none"
+                    }`}
                 original={line}
-                highlightText={interp?.fragment_text}
-                translated={interp?.translated_text || undefined}
-                // annotation_ko 우선, 없으면 영문 주석
-                explanation={
-                    interp?.annotation_ko && interp.annotation_ko.trim()
-                        ? interp.annotation_ko
-                        : interp?.annotation_text || undefined
-                }
+                highlightText={interp?.fragment_text ?? undefined}
+                translated={interp?.translated_text ?? undefined}
+                explanationKo={interp?.annotation_ko ?? undefined}
+                explanationEn={interp?.annotation_text ?? undefined}
             />
         );
     };
@@ -577,17 +638,15 @@ export default function ExplanationPage() {
                                             {renderLyricLine(line, idx)}
                                         </div>
                                         <div className="text-sm leading-relaxed text-gray-700 font-sans">
-                                            {
-                                                translation
-                                                    ? (translation.split("\n")[idx] || "")
-                                                    : loading
-                                                        ? (idx === 0 && <p className="text-gray-400">Verse’tory 해석중...</p>)
-                                                        : (idx === 0 && (
-                                                            <p className="text-gray-400">
-                                                                번역과 해설은 [Translate &amp; Interpretation] 버튼을 누르면 표시됩니다.
-                                                            </p>
-                                                        ))
-                                            }
+                                            {translation
+                                                ? translation.split("\n")[idx] || ""
+                                                : loading
+                                                    ? idx === 0 && <p className="text-gray-400">Verse’tory 해석중...</p>
+                                                    : idx === 0 && (
+                                                        <p className="text-gray-400">
+                                                            번역과 해설은 [Translate &amp; Interpretation] 버튼을 누르면 표시됩니다.
+                                                        </p>
+                                                    )}
                                         </div>
                                     </div>
                                 ))}
@@ -598,7 +657,9 @@ export default function ExplanationPage() {
                         <div className="flex justify-center my-24">
                             <button
                                 onClick={async () => {
-                                    const { data: { user } } = await supabase.auth.getUser();
+                                    const {
+                                        data: { user },
+                                    } = await supabase.auth.getUser();
                                     if (!user) {
                                         setSignInOpen(true);
                                     } else {
@@ -630,9 +691,7 @@ export default function ExplanationPage() {
                             ) : (
                                 <div className="space-y-4">
                                     <div className="whitespace-pre-wrap text-black leading-relaxed">
-                                        {aboutLoading && !aboutText && (
-                                            <span className="text-gray-400">About 번역 중...</span>
-                                        )}
+                                        {aboutLoading && !aboutText && <span className="text-gray-400">About 번역 중...</span>}
                                         {aboutText}
                                     </div>
                                     <div className="flex justify-center">

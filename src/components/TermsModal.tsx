@@ -80,7 +80,7 @@ export default function TermsModal({ open, onClose }: Props) {
                     <div className="max-h-[65vh] overflow-y-auto pr-2">
                         {isKo ? (
                             <div className="text-gray-700 leading-relaxed space-y-6">
-                                <p>시행일: 00 00 2025 (KST)</p>
+                                <p>시행일: 2025-10-27 (KST)</p>
 
                                 <section>
                                     <h3 className="text-xl font-semibold text-black mb-2">1. 목적</h3>
@@ -242,7 +242,7 @@ export default function TermsModal({ open, onClose }: Props) {
                             </div>
                         ) : (
                             <div className="text-gray-700 leading-relaxed space-y-6">
-                                <p>Effective Date: 00 ??? 2025 (KST)</p>
+                                <p>Effective Date: 2025-10-27 (KST)</p>
 
                                 <section>
                                     <h3 className="text-xl font-semibold text-black mb-2">1. Purpose</h3>

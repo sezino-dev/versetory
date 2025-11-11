@@ -48,7 +48,7 @@ export default function Licensing() {
                     <>
                         {/* meta */}
                         <section className="max-w-screen-xl mx-auto px-6 py-6">
-                            <p className="text-gray-700">Last updated: 2025-00-00 (KST)</p>
+                            <p className="text-gray-700">Last updated: 2025-10-27 (KST)</p>
                         </section>
 
                         <hr className="border-t border-[#E6E6E6] max-w-screen-xl mx-auto my-8" />
@@ -131,7 +131,7 @@ export default function Licensing() {
                     <>
                         {/* meta */}
                         <section className="max-w-screen-xl mx-auto px-6 py-6">
-                            <p className="text-gray-700">Last updated: 2025-00-00 (KST)</p>
+                            <p className="text-gray-700">Last updated: 2025-10-27 (KST)</p>
                         </section>
 
                         <hr className="border-t border-[#E6E6E6] max-w-screen-xl mx-auto my-8" />

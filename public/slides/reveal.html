@@ -1,4 +1,3 @@
-<!-- /public/slides/reveal.html -->
 <!doctype html>
 <html lang="ko">
 
@@ -6,16 +5,21 @@
     <meta charset="utf-8" />
     <title>Verse’tory — Demo Deck (reveal.js)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <!-- reveal.js core -->
+    <!-- reveal core & theme -->
     <link rel="stylesheet" href="https://unpkg.com/reveal.js@4/dist/reveal.css" />
     <link rel="stylesheet" href="https://unpkg.com/reveal.js@4/dist/theme/black.css" id="theme" />
-
-    <!-- code highlight theme -->
-    <link rel="stylesheet" href="https://unpkg.com/reveal.js@4/plugin/highlight/monokai.css" />
-
+    <!-- highlight theme (VS Code Dark+) -->
+    <link rel="stylesheet" href="https://unpkg.com/highlight.js@11.9.0/styles/vs2015.min.css" />
     <style>
-        /* 상단 75% 라이브 데모 오버레이 */
+        :root {
+            --vscode-editor-bg: #1e1e1e;
+            --vscode-editor-fg: #d4d4d4;
+            --vscode-border: #2a2a2a;
+            --vscode-comment: #6A9955;
+            /* 주석 초록 */
+        }
+
+        /* 상단 75% 라이브 미리보기 */
         #liveOverlay {
             position: fixed;
             left: 0;
@@ -33,30 +37,26 @@
             border: 0;
         }
 
-        /* 하단 25% 전역 스트립 오버레이 (클릭은 내부만 받도록) */
+        /* 하단 25% 코드 스트립 */
         #liveStrip {
             position: fixed;
             left: 0;
             right: 0;
             bottom: 0;
             height: 25vh;
-            background: rgba(0, 0, 0, 0.15);
+            background: transparent;
             z-index: 1400;
-            display: none;
             padding: 12px 24px;
             box-sizing: border-box;
-            backdrop-filter: blur(2px);
             pointer-events: none;
+            display: none;
         }
 
         #liveStripInner {
             width: 92%;
             max-width: 1600px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 14px;
-            padding: 16px 22px;
+            padding: 0;
             box-sizing: border-box;
             color: #fff;
             pointer-events: auto;
@@ -66,49 +66,84 @@
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            margin-bottom: 8px;
+            margin: 0 0 6px 0;
         }
 
         .strip-title {
             margin: 0;
-            font-size: 28px;
-            line-height: 1.2;
+            font-size: 22px;
+            line-height: 1.3;
+            font-weight: 700;
         }
 
-        .strip-page {
-            font-size: 16px;
+        .strip-path {
+            color: var(--vscode-editor-fg);
             font-weight: 600;
-            opacity: 0.95;
-        }
-
-        .strip-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-        }
-
-        .strip-card {
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 10px;
-            padding: 12px 14px;
-            background: rgba(0, 0, 0, 0.25);
-            font-size: 18px;
-            line-height: 1.4;
-        }
-
-        .strip-code {
-            max-height: calc(25vh - 72px);
-            overflow: auto;
             font-size: 14px;
-            line-height: 1.5;
+            margin: 0 0 6px 0;
+            opacity: .9;
         }
 
-        .strip-code pre,
-        .strip-code code {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        /* 좌 3/5 : 우 2/5 */
+        .strip-flex {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 12px;
+            height: calc(25vh - 46px);
         }
 
-        /* show-live 구간에서 기본 slide-number/controls 가려지지 않도록 위로 */
+        .strip-flex>* {
+            min-height: 0;
+        }
+
+        /* 코드 패널 공통 */
+        .code-panel {
+            overflow: auto;
+            font-size: 13px;
+            line-height: 1.15;
+            background: var(--vscode-editor-bg);
+            color: var(--vscode-editor-fg);
+            border: 1px solid var(--vscode-border);
+            border-radius: 10px;
+            padding: 8px 10px 10px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .code-panel pre,
+        .code-panel code {
+            background: transparent !important;
+            margin: 0;
+            white-space: pre;
+            line-height: 1.15;
+            font-family: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
+            color: var(--vscode-editor-fg);
+        }
+
+        /* 하이라이트 주석 색 */
+        .hljs-comment,
+        .hljs-quote {
+            color: var(--vscode-comment) !important;
+            font-style: normal;
+            opacity: 1;
+        }
+
+        .panel-title {
+            margin: 0 0 6px 0;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--vscode-editor-fg);
+        }
+
+        /* Reveal 텍스트 가독성 */
+        .reveal h1,
+        .reveal h2,
+        .reveal h3,
+        .reveal p,
+        .reveal li {
+            text-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+        }
+
         body.show-live .reveal .slide-number {
             position: fixed;
             top: 8px;
@@ -121,25 +156,114 @@
             z-index: 2001;
         }
 
-        /* 일반 슬라이드 가독성 */
-        .reveal h1,
-        .reveal h2,
-        .reveal h3,
-        .reveal p,
-        .reveal li {
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        /* (옵션) 라인넘버 스타일 - data-line-numbers 사용 시만 */
+        .code-ln {
+            display: block;
+        }
+
+        .code-ln .line {
+            display: block;
+            padding: 0 0 0 10px;
+            line-height: 1.15;
+        }
+
+        .code-ln .ln {
+            display: inline-block;
+            width: 4ch;
+            text-align: right;
+            margin-right: 10px;
+            color: #9aa0a6;
+            user-select: none;
+            border-right: 1px solid #333;
+            padding-right: 8px;
+        }
+
+        .code-ln .ln.gap {
+            color: #9aa0a6;
+            font-weight: 600;
+        }
+
+        /* 슬라이드1 좌상단 고정 배지 (화면 기준 고정) */
+        .slide-corner-note {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            margin: 0;
+            padding: 0;
+            background: none;
+            box-shadow: none;
+            color: #eaeaea;
+            font-size: 24px;
+            line-height: 1.35;
+            text-align: left;
+            z-index: 3000;
+            pointer-events: none;
+            display: none;
+        }
+
+        /* --- Export/Print: 스크롤 콘텐츠 전체 펼치기 --- */
+        html.export .strip-flex {
+            height: auto !important;
+        }
+
+        html.export .code-panel {
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+        }
+
+        html.export #liveStrip {
+            position: static !important;
+            height: auto !important;
+            padding: 0 !important;
+        }
+
+        html.export #liveStripInner {
+            width: 100% !important;
+            max-width: none !important;
+            padding: 0 !important;
+        }
+
+        /* 상단 라이브 iFrame은 내보내기에서 숨김(필요 시) */
+        html.export #liveOverlay {
+            display: none !important;
+        }
+
+        /* 프린트 PDF에서도 동일하게 적용 */
+        @media print {
+            .strip-flex {
+                height: auto !important;
+            }
+
+            .code-panel {
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+            }
+
+            #liveStrip {
+                position: static !important;
+                height: auto !important;
+                padding: 0 !important;
+            }
+
+            #liveOverlay {
+                display: none !important;
+            }
         }
     </style>
+    <script>
+        if (location.search.includes('export=1')) {
+            document.documentElement.classList.add('export');
+        }
+    </script>
 </head>
 
 <body>
-
-    <!-- 전역 라이브 데모 오버레이 -->
-    <div id="liveOverlay">
-        <iframe id="liveOverlayFrame" src="http://localhost:3000" title="Verse’tory Live"></iframe>
+    <!-- 상단 라이브 -->
+    <div id="liveOverlay"><iframe id="liveOverlayFrame" src="http://localhost:3000" title="Verse’tory Live"></iframe>
     </div>
-
-    <!-- 전역 하단 스트립 오버레이 -->
+    <!-- 하단 코드 스트립 -->
     <div id="liveStrip">
         <div id="liveStripInner"></div>
     </div>
@@ -147,180 +271,440 @@
     <div class="reveal">
         <div class="slides">
 
-            <!-- 1. 전체페이지 슬라이드 -->
+            <!-- 1. Intro (Image Full) -->
+            <section data-background-image="./slide1.png" data-background-color="#191919" data-background-size="contain"
+                data-background-position="center center" data-background-repeat="no-repeat" data-background-opacity="1">
+            </section>
+
+
+            <!-- 2. Logo Story & Project Vision (Image Full) -->
+            <section data-background-image="./slide2.png" data-background-color="#191919" data-background-size="contain"
+                data-background-position="center center" data-background-repeat="no-repeat" data-background-opacity="1">
+            </section>
+
+            <!-- 3. System Overall -->
             <section>
-                <h1>Verse’tory</h1>
-                <h3>AI-powered cultural interpretation & translation</h3>
-                <p>Arrow/Space: 다음 · S: 발표자 노트 · F: 전체화면</p>
-                <aside class="notes">오프닝 후 2 → 라이브 데모(3~5).</aside>
-            </section>
-
-            <!-- 2. 전체페이지 슬라이드 -->
-            <section>
-                <h2>Agenda</h2>
-                <ol>
-                    <li>문제 정의와 콘셉트</li>
-                    <li>핵심 기능</li>
-                    <li>라이브 데모</li>
-                    <li>Q&A</li>
-                </ol>
-                <aside class="notes">다음부터 show-live.</aside>
-            </section>
-
-            <!-- 3. show-live: 하단 스트립 템플릿 (코드) -->
-            <section data-state="show-live">
-                <template class="strip-template">
-                    <div class="strip-meta">
-                        <h3 class="strip-title">Live Demo — 로그인 세션 확인 및 라우팅</h3>
-                        <span class="strip-page"></span>
-                    </div>
-                    <div class="strip-code">
-                        <pre><code class="language-typescript" data-trim>
-// 로그인 사용자 정보 불러오기: Naver → Supabase 순
-useEffect(() => {
-  const fetchUser = async () => {
-    // 1) NextAuth(Naver)
-    if (naverStatus === 'authenticated' && naverSession?.user) {
-      setEmail(naverSession.user.email ?? '')
-      setAccountType('naver')
-      return
-    }
-
-    // 2) Supabase
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      setEmail(user.email || '')
-      setAccountType(user.app_metadata?.provider || '')
-      return
-    }
-
-    // 미로그인 시 홈으로
-    router.push('/')
-  }
-  fetchUser()
-}, [naverStatus, naverSession, router])
-</code></pre>
-                    </div>
-                </template>
-                <aside class="notes">오버레이 상단에서 실제 로그인 상태 시연.</aside>
-            </section>
-
-            <!-- 4. show-live: 하단 스트립 템플릿 -->
-            <section data-state="show-live">
-                <template class="strip-template">
-                    <div class="strip-meta">
-                        <h3 class="strip-title">Live Demo — 가사 로드와 섹션 라벨</h3>
-                        <span class="strip-page"></span>
-                    </div>
-                    <div class="strip-grid">
-                        <div class="strip-card">[Verse]/[Chorus] 라벨 보존</div>
-                        <div class="strip-card">원문 줄 수 1:1 유지</div>
-                        <div class="strip-card">괄호 내 가사 처리 규칙</div>
-                    </div>
-                </template>
-                <aside class="notes">로딩 지연 시 캐싱/프리페치 언급.</aside>
-            </section>
-
-            <!-- 5. show-live: 하단 스트립 템플릿 -->
-            <section data-state="show-live">
-                <template class="strip-template">
-                    <div class="strip-meta">
-                        <h3 class="strip-title">Live Demo — 번역·해설과 Feedback</h3>
-                        <span class="strip-page"></span>
-                    </div>
-                    <div class="strip-grid">
-                        <div class="strip-card">문화 맥락/레퍼런스 해설</div>
-                        <div class="strip-card">Comments / Feedback</div>
-                        <div class="strip-card">에러 핸들링 및 로깅</div>
-                    </div>
-                </template>
-                <aside class="notes">이후 전체 슬라이드로 복귀.</aside>
-            </section>
-
-            <!-- 6. 전체페이지 슬라이드 -->
-            <section>
-                <h2>Architecture Overview</h2>
+                <h2>개발환경 · System Overall</h2>
                 <ul>
-                    <li>Next.js (Pages Router) + Supabase</li>
-                    <li>Genius API · OpenAI API · Caching</li>
-                    <li>DB: songs, interpretations, comments, feedback, users</li>
+                    <li><strong>Frontend</strong>: Next.js (React, TypeScript), Tailwind CSS</li>
+                    <li><strong>Backend</strong>: Next.js </li>
+                    <li><strong>API</strong>: OpenAI API, Genius API(Rapid API)</li>
+                    <li><strong>Data</strong>: Supabase (PostgreSQL)</li>
+                    <li><strong>Auth</strong>: NextAuth (Naver) + Supabase OAuth (Google, Facebook, (Kakao))</li>
                 </ul>
-                <aside class="notes">데모 플로우 매핑.</aside>
             </section>
 
-            <!-- 7. 전체페이지 슬라이드 -->
+            <!-- 4. Search & Autocomplete (Live) -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">자동완성 검색 기능 (Search &amp; Autocomplete)</h3>
+                    </div>
+                    <div class="strip-flex">
+                        <!-- 좌: Implementation -->
+                        <div class="code-panel">
+                            <p class="panel-title">src/components/GeniusAutocomplete.tsx</p>
+                            <pre><code class="hljs language-js" data-trim>
+const res = await fetch(`/api/genius-search?q=${encodeURIComponent(query)}`)
+// 입력한 검색어(query)로 백엔드의 Genius 검색 API 프록시(`/api/genius-search`) 호출
+const data = await res.json()
+// Genius API로부터 받은 검색 결과를 JSON으로 파싱
+
+const results = hits.map(hit => ({
+    id: hit.result.id,
+    title: hit.result.title,
+    artist: hit.result.primary_artist.name,
+}))
+// 각 검색 결과에서 필요한 정보(id, 제목, 아티스트)만 골라 새 배열 생성
+
+setResults(results)
+// 자동완성 결과 목록을 상태로 저장하여 검색 추천 리스트 표시
+</code></pre>
+                        </div>
+                        <!-- 우: Sequence Flow -->
+                        <div class="code-panel">
+                            <p class="panel-title">Sequence Flow</p>
+                            <pre><code class="hljs language-js" data-trim>
+// 검색어 입력 시 자동완성 목록 조회 (Genius Search API 프록시 호출)
+fetch(`/api/genius-search?q=${encodeURIComponent(query)}`)
+  .then(res => res.json())
+  .then(suggestions => showAutocompleteList(suggestions))
+
+// 곡 선택 시 상세 정보 로드 (곡 ID 활용)
+fetch(`/api/search?id=${songId}`)
+  .then(res => res.json())
+  .then(songData => openSongDetailPage(songData))
+</code></pre>
+                        </div>
+                    </div>
+                </template>
+            </section>
+
+            <!-- 5.Translation & Interpret (Live) -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">번역/해설 (Line-by-Line Translation &amp; Annotation)</h3>
+                    </div>
+                    <div class="strip-flex">
+                        <!-- 좌: Implementation -->
+                        <div class="code-panel">
+                            <p class="panel-title">src/pages/explanation/[id].tsx</p>
+                            <pre><code class="hljs language-js" data-trim>
+const res = await fetch('/api/interpret?stream=1', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream',
+  },
+  body: JSON.stringify({
+    lyrics,
+    about,
+    mode: 'translate',
+    songId,
+    songTitle,
+  }),
+})
+
+// 가사 정보를 포함한 번역 요청 (SSE 모드)
+const res = await fetch('/api/interpret?stream=1', { method: 'POST', headers: { 'Content-Type': 'application/json',
+'Accept': 'text/event-stream' }, body: JSON.stringify({ lyrics, about, mode: 'translate', songId, songTitle }) })
+</code></pre>
+                        </div>
+                        <!-- 우: Sequence Flow -->
+                        <div class="code-panel">
+                            <p class="panel-title">Sequence Flow</p>
+                            <pre><code class="hljs language-js" data-trim>
+// 번역 API 요청 페이로드 구성
+const payload = { lyrics, mode: 'translate', songId, songTitle }
+
+// 번역 API 호출 (스트리밍 활성화)
+const response = await fetch('/api/interpret?stream=1', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload)
+})
+
+// SSE를 통해 번역 결과 이벤트들을 수신하여 화면에 점진적으로 표시
+// 번역 완료 후 서버에서 interpretations 테이블에 결과 upsert 처리 (캐싱)
+</code></pre>
+                        </div>
+                    </div>
+                </template>
+            </section>
+
+            <!-- 6. Lyrics Hover Tooltip (Live) -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">라인 툴팁 (Lyrics Hover Tooltip)</h3>
+                    </div>
+                    <div class="strip-flex">
+                        <!-- 좌: Implementation -->
+                        <div class="code-panel">
+                            <p class="panel-title">src/components/HoverTooltip.tsx</p>
+                            <pre><code class="hljs language-tsx" data-trim>
+&lt;span
+  onMouseEnter=&#123;() =&gt; &#123; if (enableTooltip) setShow(true) &#125;&#125;
+  onMouseLeave=&#123;() =&gt; setShow(false)&#125;
+&gt;
+  &#123;renderWithHighlight(original, highlightText, show)&#125;
+&lt;/span&gt;
+&#123;show &amp;&amp; enableTooltip &amp;&amp; createPortal(
+  &lt;div className=&quot;tooltip&quot;&gt;
+    &#123;translated &amp;&amp; &lt;p&gt;&lt;span className=&quot;font-semibold&quot;&gt;번역: &lt;/span&gt;&#123;translated&#125;&lt;/p&gt;&#125;
+    &#123;explanation &amp;&amp; &lt;p&gt;&lt;span className=&quot;font-semibold&quot;&gt;해설: &lt;/span&gt;&#123;explanation&#125;&lt;/p&gt;&#125;
+  &lt;/div&gt;,
+  document.body
+)&#125;
+// 툴팁 포털: 해당 가사 줄에 대한 번역(translated_text)과 해설(annotation)을 화면에 띄워 보여줌
+</code></pre>
+                        </div>
+                        <!-- 우: Sequence Flow -->
+                        <div class="code-panel">
+                            <p class="panel-title">Sequence Flow</p>
+                            <pre><code class="hljs language-js" data-trim>
+// 가사 줄 hover 이벤트 처리 예시
+function onLyricHover(line: { annotation_text?: string; annotation_ko?: string; id: string }) {
+  if (line.annotation_ko) {
+    showTooltip(line.annotation_ko)
+    // 이미 한글 주석 존재 시 바로 표시 (annotation_ko)
+  } else if (line.annotation_text) {
+    showTooltip(line.annotation_text)
+    // 번역 진행중일 시 일단 영문 주석 표시 (annotation_text)
+
+    // 백그라운드 주석 번역 진행중...
+    fetch('/api/interpret', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: line.annotation_text, mode: 'annotation' })
+    })
+    .then(res => res.json())
+    .then(({ result }) => {
+      updateAnnotation(line.id, result) // DB에 번역 저장
+      showTooltip(result) // 툴팁을 한국어 해설로 갱신
+    })
+  }
+}
+</code></pre>
+                        </div>
+                    </div>
+                </template>
+            </section>
+
+            <!-- 7. Social Login & Auth (Live) -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">로그인 인증 (Social Login &amp; Auth)</h3>
+                    </div>
+                    <div class="strip-flex">
+                        <!-- 좌: Implementation -->
+                        <div class="code-panel">
+                            <p class="panel-title">src/components/SignInModal.tsx</p>
+                            <pre><code class="hljs language-js" data-trim>
+await supabase.auth.signInWithOAuth({ provider: 'google', options: { scopes: 'openid email profile', redirectTo: window.location.href } })
+// Supabase 클라이언트를 통해 Google, Facebook 소셜 로그인 OAuth 요청 (인증 페이지로 리디렉션)
+
+await naverSignIn('naver', { callbackUrl: window.location.href })
+// NextAuth(Auth.js)를 통해 Naver 소셜 로그인 요청 (네이버 OAuth 인증 페이지로 이동)
+</code></pre>
+                        </div>
+                        <!-- 우: Sequence Flow -->
+                        <div class="code-panel">
+                            <p class="panel-title">Sequence Flow</p>
+                            <pre><code class="hljs language-js" data-trim>
+//Supabase Auth를통해 Google, Facebook, (Kakao) 로그인
+import { supabase } from '@/lib/supabaseClient'
+// NextAuth를 통해 네이버 로그인
+import { signIn } from 'next-auth/react'
+
+// Google/Facebook OAuth 로그인 (Supabase)
+await supabase.auth.signInWithOAuth({ provider: 'google' })
+await supabase.auth.signInWithOAuth({ provider: 'facebook' })
+
+// Naver OAuth 로그인 (NextAuth)
+signIn('naver')
+</code></pre>
+                        </div>
+                    </div>
+                </template>
+            </section>
+
+            <!-- 8. Comments (Live) -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">댓글 기능 (Comments)</h3>
+                    </div>
+                    <div class="strip-flex">
+                        <!-- 좌: Implementation -->
+                        <div class="code-panel">
+                            <p class="panel-title">src/components/Comments.tsx</p>
+                            <pre><code class="hljs language-js" data-trim>
+// 1) 댓글 목록 불러오기
+const res = await fetch(`/api/comments?songId=${encodeURIComponent(songId)}`) // ① GET 요청 songId곡의 댓글 목록을 조회
+const commentList = await res.json() // ② 응답 데이터를 JSON으로 파싱하여 댓글 목록을 획득
+setComments(Array.isArray(commentList) ? commentList : []) // ③ 댓글 목록을 상태로 저장하여 화면에 표시
+
+// 2) 새 댓글 작성
+await fetch('/api/comments', { // ① POST 요청 특정 곡에 새로운 댓글을 작성 (인증된 사용자만 가능)
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', /* (로그인 사용자의 액세스 토큰) */},
+  body: JSON.stringify({ songId, content })
+})
+// ② 댓글 작성 후 갱신을 위해 댓글 목록을 다시 불러옴
+await fetchComments()
+</code></pre>
+                        </div>
+                        <!-- 우: Sequence Flow -->
+                        <div class="code-panel">
+                            <p class="panel-title">Sequence Flow</p>
+                            <pre><code class="hljs language-js" data-trim>
+// 댓글 목록 불러오기 (songID 기준)
+const res = await fetch(`/api/comments?songId=${songId}`)
+const comments = await res.json()
+
+// 댓글 작성 요청 (로그인 사용자만 가능, Authorization 헤더에 토큰 필요)
+await fetch('/api/comments', {
+  method: 'POST',
+  headers: { 'Authorization': 'Bearer ' + accessToken },
+  body: JSON.stringify({ songId, content: newCommentText })
+})
+
+// 댓글 삭제 요청 (본인 댓글에 한해 처리 가능)
+await fetch('/api/comments', {
+  method: 'DELETE',
+  headers: { 'Authorization': 'Bearer ' + accessToken },
+  body: JSON.stringify({ id: commentIdToDelete })
+})
+</code></pre>
+                        </div>
+                    </div>
+                </template>
+            </section>
+
+            <!-- 9. Feedback (Live) -->
+            <section data-state="show-live">
+                <template class="strip-template">
+                    <div class="strip-meta">
+                        <h3 class="strip-title">피드백 기능 (Feedback)</h3>
+                    </div>
+                    <div class="strip-flex">
+                        <!-- 좌: Implementation -->
+                        <div class="code-panel">
+                            <p class="panel-title">src/pages/feedback.tsx</p>
+                            <pre><code class="hljs language-js" data-trim>
+// 피드백 내용과사용자 정보를 서버의 피드백 API에 전송하여 DB에 저장
+await fetch('/api/feedback', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', /* (로그인 사용자의 액세스 토큰) */ },
+  body: JSON.stringify({
+    message: content.trim(),
+    song_title: songTitle || null,
+    feedback_title: title || null,
+    reason: reason || null,
+  })
+})
+
+// 성공적으로 저장되면 피드백 완료 모달을 열고 입력 폼을 초기화
+setSuccessOpen(true)
+</code></pre>
+                        </div>
+                        <!-- 우: Sequence Flow -->
+                        <div class="code-panel">
+                            <p class="panel-title">Sequence Flow</p>
+                            <pre><code class="hljs language-js" data-trim>
+// 피드백 제출 요청 (로그인 사용자만, Authorization 헤더, accessToken)
+await fetch('/api/feedback', {
+  method: 'POST',
+  headers: { 'Authorization': 'Bearer ' + /* (로그인 사용자의 액세스 토큰) */ },
+  body: JSON.stringify({
+    feedback_title: '/* 피드백 제목 */',
+    content: '/* 피드백 내용 */',
+    reason: '/* Tlasport Quality, Bug RePort, Featuure Request 3개중 1개 선택 */',
+    song_title: '/* 곡 제목 */'
+  })
+})
+</code></pre>
+                        </div>
+                    </div>
+                </template>
+            </section>
+
+            <!-- 10. Limitations & Future Improvements -->
+            <section>
+                <h2>Limitations &amp; Future Improvements</h2>
+                <ul>
+                    <li>외부 API에 의지하지 않는 독자적 LLM Model 도입</li>
+                    <li>스팸 방지 쿨다운, 중복 제한 도입</li>
+                    <li>번역 캐시 활용으로 속도 향상 <code>(song_id + hash)</code></li>
+                    <li>해설 제공시 이미지, 영상등 다양한 매체 활용</li>
+                    <li>정식 전환 계획 수립: Naver Tester, Kakao Tester 정식 전환</li>
+                </ul>
+            </section>
+
+            <!-- 11. Q&A -->
             <section>
                 <h2>Q&A</h2>
-                <p>필요 시 3~5로 복귀해 추가 시연.</p>
-                <aside class="notes">질문에 맞춰 데모 재진행.</aside>
+                <p>브라우저 환경에서 시연</p>
             </section>
 
         </div>
     </div>
 
-    <!-- reveal.js scripts -->
+    <!-- reveal & plugins -->
     <script src="https://unpkg.com/reveal.js@4/dist/reveal.js"></script>
     <script src="https://unpkg.com/reveal.js@4/plugin/notes/notes.js"></script>
     <script src="https://unpkg.com/reveal.js@4/plugin/highlight/highlight.js"></script>
-
     <script>
         Reveal.initialize({
-            hash: true,
-            width: 1920, height: 1080,
-            margin: 0.04,
-            minScale: 0.2, maxScale: 2.0,
-            controls: true, progress: true, slideNumber: 'c/t',
-            center: true,
-            plugins: [RevealNotes, RevealHighlight]
+            hash: true, width: 1920, height: 1080, margin: 0.04, minScale: 0.2, maxScale: 2.0,
+            slideNumber: 'c/t', controls: true, progress: false, center: true,
+            plugins: [RevealHighlight, RevealNotes],
+            highlight: { highlightOnLoad: true, escapeHTML: false }
         });
 
-        function highlightInjectedCode(rootEl) {
-            const plugin = Reveal.getPlugin('highlight');
-            const hljs = plugin && plugin.hljs ? plugin.hljs : window.hljs;
-            if (!hljs || !rootEl) return;
-
-            if (!hljs.getLanguage('typescript') && hljs.getLanguage && hljs.getLanguage('ts') && hljs.registerAliases) {
-                hljs.registerAliases(['ts'], { languageName: 'typescript' });
+        /* (옵션) data-line-numbers 사용 시 라인번호 붙이는 유틸 */
+        function addLineNumbers(el) {
+            if (el.dataset.lnApplied === '1') return;
+            if (!el.hasAttribute('data-line-numbers')) { el.dataset.lnApplied = '1'; return; }
+            if (el.dataset.lnGap) {
+                const range = el.dataset.lnGap;
+                el.innerHTML = '<div class="code-ln"><div class="line"><span class="ln gap" title="' + range + '">&hellip;</span></div></div>';
+                el.dataset.lnApplied = '1'; return;
             }
+            const html = el.innerHTML.replace(/^\n+/, '').replace(/\n+$/, '');
+            const start = parseInt(el.dataset.lnStart || el.getAttribute('data-ln-start') || '1', 10);
+            const lines = html.split('\n');
+            const withLn = lines.map((line, i) => '<div class="line"><span class="ln">' + (start + i) + '</span>' + (line || '') + '</div>').join('\n');
+            el.innerHTML = '<div class="code-ln">' + withLn + '</div>';
+            el.dataset.lnApplied = '1';
+        }
 
-            rootEl.querySelectorAll('pre code').forEach((el) => {
-                if (![...el.classList].some(c => c.startsWith('language-'))) {
-                    el.classList.add('language-typescript');
+        function highlightInjectedCode(root) {
+            const plugin = Reveal.getPlugin('highlight');
+            const hljs = (plugin && plugin.hljs) ? plugin.hljs : window.hljs;
+            if (!root) return;
+            root.querySelectorAll('pre code').forEach(codeEl => {
+                if (![].some.call(codeEl.classList, c => c.startsWith('language-'))) {
+                    codeEl.classList.add('language-typescript');
                 }
-                hljs.highlightElement(el);
+                if (hljs && hljs.highlightElement && !codeEl.dataset.lnGap) {
+                    hljs.highlightElement(codeEl);
+                }
+                addLineNumbers(codeEl);
             });
         }
 
+        /* 템플릿 DOM clone 으로 주입 → ${} 충돌 방지 */
         function renderStripFromSlide(slide) {
             const tmpl = slide ? slide.querySelector('template.strip-template') : null;
             const host = document.getElementById('liveStripInner');
             if (!host) return;
+            host.innerHTML = '';
+            if (!tmpl) return;
 
-            if (tmpl) {
-                host.innerHTML = tmpl.innerHTML;
-                highlightInjectedCode(host);
+            const frag = document.createDocumentFragment();
 
-                const pageEl = host.querySelector('.strip-page');
-                if (pageEl) {
-                    const current = Reveal.getSlidePastCount() + 1;
-                    const total = Reveal.getTotalSlides();
-                    pageEl.textContent = `${current} / ${total}`;
-                }
-            } else {
-                host.innerHTML = '';
-            }
+            const meta = document.createElement('div');
+            meta.className = 'strip-meta';
+            const title = tmpl.content.querySelector('.strip-title');
+            if (title) meta.appendChild(title.cloneNode(true));
+            frag.appendChild(meta);
+
+            const path = tmpl.content.querySelector('.strip-path');
+            if (path) frag.appendChild(path.cloneNode(true));
+
+            const flex = tmpl.content.querySelector('.strip-flex');
+            if (flex) frag.appendChild(flex.cloneNode(true));
+
+            host.appendChild(frag);
+            highlightInjectedCode(host);
         }
 
+        /* 슬라이드 변경 시 UI 및 좌상단 배지 제어 */
         function updateLiveUI() {
             const slide = Reveal.getCurrentSlide();
             const isShowLive = slide && (slide.dataset.state || '').split(' ').includes('show-live');
-
             document.getElementById('liveOverlay').style.display = isShowLive ? 'block' : 'none';
             document.getElementById('liveStrip').style.display = isShowLive ? 'block' : 'none';
-
             document.body.classList.toggle('show-live', !!isShowLive);
-
             renderStripFromSlide(slide);
+
+            // 좌상단 배지: 1번 슬라이드에서만 표시 + 데이터로 위치 지정
+            const note = document.querySelector('.slide-corner-note');
+            if (note) {
+                const idx = Reveal.getIndices(); // {h,v,f}
+                const onFirstSlide = (idx.h === 0 && idx.v === 0);
+                note.style.display = onFirstSlide ? 'block' : 'none';
+                if (onFirstSlide) {
+                    const top = slide?.dataset.cornerTop ? Number(slide.dataset.cornerTop) : 64;
+                    const left = slide?.dataset.cornerLeft ? Number(slide.dataset.cornerLeft) : 64;
+                    note.style.top = `${top}px`;
+                    note.style.left = `${left}px`;
+                }
+            }
         }
 
         Reveal.on('ready', updateLiveUI);

@@ -49,7 +49,7 @@ export default function CopyrightPolicy() {
                         {/* meta */}
                         <section className="max-w-screen-xl mx-auto px-6 py-6">
                             <div className="text-gray-700 leading-relaxed">
-                                <p>시행일: 2025-00-00 (KST)</p>
+                                <p>시행일: 2025-10-27 (KST)</p>
                                 <p>연락처: tpwls0831@naver.com</p>
                             </div>
                         </section>
@@ -218,7 +218,7 @@ export default function CopyrightPolicy() {
                         {/* meta */}
                         <section className="max-w-screen-xl mx-auto px-6 py-6">
                             <div className="text-gray-700 leading-relaxed">
-                                <p>Effective Date: 2025-00-00 (KST)</p>
+                                <p>Effective Date: 2025-10-27 (KST)</p>
                                 <p>Connect: tpwls0831@naver.com</p>
                             </div>
                         </section>

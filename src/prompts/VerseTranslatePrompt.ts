@@ -1,4 +1,10 @@
 // /lib/prompts/VerseTranslatePrompt.ts
+
+/**
+ * Verse’tory 가사 번역 프롬프트 생성기
+ * - 줄 수 1:1 유지, 섹션 라벨 보존, 괄호 내 토큰 보존, 비속어 X 치환 등 프로젝트 규칙을 포함한다.
+ * - 고유명사 처리 강화: 약어/두문자어 포함 모든 고유명사를 작은따옴표(' ')로 감싸고 번역하지 않는다.
+ */
 export const VerseTranslatePrompt = (lyrics: string, about: string) => `
 당신은 영어 학습용 자료를 만드는 조교입니다. 아래 텍스트는 음악 관련 영어 문장 모음이며, 상업적 목적이 아닌 교육·연구용 학습 자료입니다.
 중요: 원문 영어 문장을 절대 재출력하지 말고, 오직 한국어만 출력하세요. 원문을 추정·복원하는 행위도 금지합니다.
@@ -9,10 +15,17 @@ export const VerseTranslatePrompt = (lyrics: string, about: string) => `
 - ( ) 괄호 안 문장은 반드시 번역하세요. 단, 아래 감탄사/추임새 토큰은 원문 그대로 보존하고 나머지 부분만 한국어로 번역하세요.
   * 허용 토큰(소문자 기준): psst, ayy, yo, ho, hey, wop, uh, mm, hmm, ooh, woo, aye, yeah, yah, ya, huh
   * 출력 시 괄호는 유지합니다. 예: (Mustard on the beat, ho) → (비트는 'Mustard'가 찍었어, ho)
-- 슬랭/의성어/감탄사는 번역이 어색하면 원문을 유지할 수 있습니다. (괄호 안에서는 “부분 번역 + 토큰 유지”를 적용)
+- 슬랭/의성어/감탄사는 번역이 어색하면 원문을 유지할 수 있습니다. (괄호 안에서는 “부분 번역 + 토큰 유지” 적용)
 - 'nigga'는 기본적으로 원문 그대로 두세요(자동 마스킹 금지). 문맥상 한국어 욕설이 훨씬 자연스러우면 “X 치환” 규칙으로 변환할 수 있습니다. 예: "You niggas" → "너희 새X들"
 - 욕설/비속어는 한국어 번역 시 한 글자를 X로 치환하세요. 예: 새끼→X끼, 좆같이→X같이
-- 고유명사(인명/아티스트/곡명/지명/브랜드)는 번역하지 말고 작은따옴표(' ')로 감싼 원문 표기로 남기세요.
+
+[고유명사 처리 강화]
+- 인명/아티스트/곡명/지명/조직/브랜드/레이블 등 모든 고유명사는 번역하지 말고 작은따옴표(' ')로 감싼 원문 표기로 남깁니다.
+- 약어·두문자어(예: LA, NYC, UK, U.S., UCLA, OVO, YSL, NFL 등)도 예외 없이 작은따옴표로 감쌉니다.
+- 복합명사/별칭/크루/레이블(예: Death Row Records, Top Dawg Entertainment, Odd Future)은 전체를 하나의 고유명사로 보고 작은따옴표로 감쌉니다.
+- 문장부호/전치사 인접 시에도 작은따옴표를 유지합니다. 예: to 'LA', from 'Compton', in 'South Central'
+- 고유명사를 설명하거나 한글 병기를 추가하지 마세요. 필요한 맥락 보강은 번역 문장 내 자연스러운 한국어로 처리하되, 고유명사 표기 자체는 원형을 유지합니다.
+
 - 곡 설명(about)을 참고하여 모호한 인물/사건/문화 맥락을 자연스럽게 보강하세요.
 - 절대로 원문 영어를 인용·복사·요약 형태로라도 출력하지 마세요. 한국어 해석문만 출력하세요.
 
@@ -29,7 +42,9 @@ export const VerseTranslatePrompt = (lyrics: string, about: string) => `
 - 원문: You niggas don't get it
   출력: 너희 새X들은 아직도 몰라
 - 원문: From 'Compton' to LA
-  출력: 'Compton'에서 LA까지
+  출력: 'Compton'에서 'LA'까지
+- 원문: Back in South Central, Death Row Records run it
+  출력: 다시 'South Central'에선 'Death Row Records'가 주도해
 
 [참고 설명 about]
 ${about || "없음"}

@@ -1,0 +1,195 @@
+<!-- 1. Intro -->
+<section>
+    <h1>Verse’tory</h1>
+    <h3>AI-powered cultural interpretation & translation</h3>
+</section>
+
+<!-- 2. Problem Definition -->
+<section>
+    <h2>로고 스토리 (슬라이드 Figma 이미지로 대체 예정)</h2>
+    <ul>
+        <li>영어 힙합 팝 가사의 의미를 단순 번역을 넘어 문화적 맥락 슬랭 밈 역사 사회적 배경 까지 해설하는 · 웹 서비스</li>
+        <li>목적: 영어 가사를 라인 단위로 학습 이해할 수 있게 번역 주석 해설 을 제공</li>
+    </ul>
+</section>
+
+<!-- 3. Auto Suggestion (Live) -->
+<section data-state="show-live">
+    <template class="strip-template">
+        <div class="strip-meta">
+            <h3 class="strip-title">자동완성 검색</h3>
+        </div>
+        <p style="color:white; font-weight: 600; font-size: 15px; margin-bottom: 4px;">
+            components/GeniusAutocomplete.tsx
+        </p>
+        <div class="strip-code">
+            <pre><code class="hljs language-tsx" data-line-numbers="1,5,11,19,28,36,43" data-trim data-noescape>
+                        const [query, setQuery] = useState('') // 검색어 상태를 관리
+                        const [results, setResults] = useState&lt;GeniusResult[]&gt;([]) // 검색 결과 리스트
+                        const [isLoading, setIsLoading] = useState(false) // 로딩 상태
+                        
+                        const fetchResults = debounce(async (search: string) =&gt; {
+                          if (!search.trim()) {
+                            setResults([]) // 공백 입력시 결과 초기화
+                            return
+                          }
+                          setIsLoading(true)
+                          try {
+                            const res = await fetch(`/api/genius-search?q=${encodeURIComponent(search)}`) // Genius API 요청
+                            const json = await res.json()
+                            const hits = json.response?.hits || []
+                            const formatted = hits.map((hit: any) =&gt; ({
+                              id: hit.result.id,
+                              title: hit.result.title,
+                              artist: hit.result.primary_artist.name,
+                              thumbnail: hit.result.song_art_image_thumbnail_url || '/no-image.png',
+                              url: hit.result.url,
+                            }))
+                            setResults(formatted) // 결과 상태에 저장
+                          } catch (error) {
+                            console.error('Search failed:', error)
+                          } finally {
+                            setIsLoading(false)
+                          }
+                        }, 400) // 400ms 디바운싱으로 API 호출 제한
+                        
+                        useEffect(() =&gt; {
+                          fetchResults(query) // query 변경 시 검색 실행 (디바운싱)
+                          return () =&gt; fetchResults.cancel()
+                        }, [query])
+                        
+                        &lt;input
+                          type=&quot;text&quot;
+                          value=&#123;query&#125;
+                          onChange=&#123;(e) =&gt; setQuery(e.target.value)&#125; // 사용자가 입력할 때 query 업데이트
+                          placeholder=&quot;Search...&quot;
+                        /&gt;
+                        
+                        &#123;results.length &gt; 0 &amp;&amp; (
+                          &lt;ul role=&quot;listbox&quot;&gt;
+                            &#123;results.map((song) =&gt; (
+                              &lt;li key=&#123;song.id&#125;&gt;
+                                &lt;Link href=&#123;`/explanation/${song.id}`&#125;&gt;
+                                  &lt;span&gt;&#123;song.artist&#125; - &#123;song.title&#125;&lt;/span&gt; {/* 아티스트 - 곡 제목 출력 */}
+                                &lt;/Link&gt;
+                              &lt;/li&gt;
+                            ))&#125;
+                          &lt;/ul&gt;
+                        )&#125;
+                              </code></pre>
+        </div>
+    </template>
+</section>
+
+
+<!-- 4. 해석 API -->
+<section data-state="show-live">
+    <template class="strip-template">
+        <div class="strip-meta">
+            <h3 class="strip-title">라인 해석 API 호출</h3>
+        </div>
+        <div class="strip-code">
+            <pre><code class="language-typescript" data-trim>
+fetch('/api/interpret', {
+  method: 'POST',
+  body: JSON.stringify({
+    songId: 10359264,
+    line: "Somebody said you got a new friend"
+  })
+})
+.then(res => res.json())
+.then(setExplanation)
+            </code></pre>
+        </div>
+    </template>
+</section>
+
+<!-- 5. 라인 툴팁 -->
+<section data-state="show-live">
+    <template class="strip-template">
+        <div class="strip-meta">
+            <h3 class="strip-title">툴팁 기반 문화 해설</h3>
+        </div>
+        <div class="strip-code">
+            <pre><code class="language-typescript" data-trim>
+<span data-annotation_ko="미국 슬랭 표현입니다">
+  You ain't got no love
+</span>
+            </code></pre>
+        </div>
+    </template>
+</section>
+
+<!-- 6. OAuth 로그인 흐름 -->
+<section data-state="show-live">
+    <template class="strip-template">
+        <div class="strip-meta">
+            <h3 class="strip-title">로그인 세션 확인</h3>
+        </div>
+        <div class="strip-code">
+            <pre><code class="language-typescript" data-trim>
+useEffect(() => {
+  const fetchUser = async () => {
+    if (naverStatus === 'authenticated') {
+      setEmail(naverSession.user.email)
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      setEmail(user?.email)
+    }
+  }
+  fetchUser()
+}, [])
+            </code></pre>
+        </div>
+    </template>
+</section>
+
+<!-- 7. 댓글 기능 -->
+<section data-state="show-live">
+    <template class="strip-template">
+        <div class="strip-meta">
+            <h3 class="strip-title">댓글 기능 (GET/POST)</h3>
+        </div>
+        <div class="strip-code">
+            <pre><code class="language-typescript" data-trim>
+fetch(`/api/comments?songId=10359264`)
+  .then(res => res.json())
+  .then(setComments)
+            </code></pre>
+        </div>
+    </template>
+</section>
+
+<!-- 8. Feedback 기능 -->
+<section data-state="show-live">
+    <template class="strip-template">
+        <div class="strip-meta">
+            <h3 class="strip-title">피드백 제출</h3>
+        </div>
+        <div class="strip-code">
+            <pre><code class="language-typescript" data-trim>
+fetch('/api/feedback', {
+  method: 'POST',
+  body: JSON.stringify({ song: 'Not Like Us', comment: '표현이 불명확해요' })
+})
+            </code></pre>
+        </div>
+    </template>
+</section>
+
+<!-- 9. 개선사항 -->
+<section>
+    <h2>Limitations & Future Improvements</h2>
+    <ul>
+        <li>스팸 방지 쿨다운 중복 제한 도입</li>
+        <li>번역 캐시 활용 (song.id + hash)로 속도 향상</li>
+        <li>주석 출처 근거 링크 표기: 품질 신뢰도 향상</li>
+        <li>정식 전환계획 수립 (Naver / Kakao SignIn 자원)</li>
+    </ul>
+</section>
+
+<!-- 10. Q&A -->
+<section>
+    <h2>QnA</h2>
+    <p>브라우저 환경에서 시연</p>
+</section>

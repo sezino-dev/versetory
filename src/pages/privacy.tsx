@@ -49,7 +49,7 @@ export default function PrivacyPolicy() {
                         {/* meta */}
                         <section className="max-w-screen-xl mx-auto px-6 py-6">
                             <div className="text-gray-700 leading-relaxed">
-                                <p>시행일: 2025-00-00 (KST)</p>
+                                <p>시행일: 2025-10-27 (KST)</p>
                                 <p>운영자: Verse’tory (졸업작품 시연용 베타)</p>
                                 <p>문의: tpwls0831@naver.com</p>
                             </div>
@@ -219,7 +219,7 @@ export default function PrivacyPolicy() {
                         {/* meta */}
                         <section className="max-w-screen-xl mx-auto px-6 py-6">
                             <div className="text-gray-700 leading-relaxed">
-                                <p>Effective Date: 2025-00-00 (KST)</p>
+                                <p>Effective Date: 2025-10-27 (KST)</p>
                                 <p>Controller: Verse’tory (Graduation project demo/beta)</p>
                                 <p>Contect: tpwls0831@naver.com</p>
                             </div>
